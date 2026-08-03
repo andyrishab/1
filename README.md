@@ -2,6 +2,15 @@
 
 Enterprise inventory management powered by **OCR**, **barcode scanning**, **FastAPI REST API**, **Google Sheets sync**, and a full **mobile-first web UI**.
 
+## 🔴 Live Demo
+
+| Interface | Public URL |
+|-----------|------------|
+| 🖥️ **Gradio Dashboard** | [https://3dc5af45673dd3df03.gradio.live](https://3dc5af45673dd3df03.gradio.live) |
+| 📱 **Mobile UI / REST API** | [http://localhost:8765](http://localhost:8765) *(local network)* |
+
+> **Note:** The Gradio public URL is active while `python app.py` is running. It expires after the session ends.
+
 ---
 
 ## ✨ Features
@@ -19,7 +28,7 @@ Enterprise inventory management powered by **OCR**, **barcode scanning**, **Fast
 | 🔄 **Google Sheets Sync** | Optional auto-sync to Google Sheets |
 | 📥 **Excel Import/Export** | Bulk import/export via `.xlsx` |
 | 🌐 **REST API** | Full FastAPI backend at `localhost:8765/api` |
-| 🔗 **Public URL** | Gradio `.live` link for remote access |
+| 🔗 **Public URL** | Gradio live link → [https://3dc5af45673dd3df03.gradio.live](https://3dc5af45673dd3df03.gradio.live) |
 
 ---
 
@@ -66,6 +75,8 @@ GRADIO_SHARE=1 python app.py
 ```
 
 A `https://xxxxxxxx.gradio.live` URL will appear in the terminal.
+
+**Current live URL:** [https://3dc5af45673dd3df03.gradio.live](https://3dc5af45673dd3df03.gradio.live)
 
 ---
 
