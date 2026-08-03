@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+venv/
+env/
+.venv/
+.env/
+
+# Logs
+logs/
+*.log
+
+# Data & exports (generated at runtime)
+data/
+exports/
+backups/
+uploads/
+json/
+drive/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Gradio
+.gradio/
+
+# Secrets / credentials
+*.json
+!requirements.txt
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# pytest cache
+.pytest_cache/

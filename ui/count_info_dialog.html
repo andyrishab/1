@@ -1,0 +1,138 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Stock Count - Count Info</title>
+<!-- Tailwind CSS v3 CDN -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<style data-purpose="custom-styling">
+    /* Custom scrollbar behavior or specific mobile tweaks if needed */
+    body {
+      background-color: #f3f4f6; /* Light gray background like the screenshot background */
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+    }
+    /* Modal specific dark gray */
+    .bg-modal-content {
+      background-color: #555555;
+    }
+    /* App Red Color */
+    .bg-app-red {
+      background-color: #a80000;
+    }
+    .text-app-red {
+      color: #a80000;
+    }
+    /* Input underline style */
+    .input-underline {
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid #9ca3af;
+      border-radius: 0;
+      padding-left: 0;
+      padding-right: 0;
+    }
+    .input-underline:focus {
+      outline: none;
+      box-shadow: none;
+      border-bottom: 2px solid #ffffff;
+    }
+  </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+<!-- BEGIN: MainHeader -->
+<header class="bg-app-red text-white p-4 flex items-center justify-between shadow-md z-0" data-purpose="app-header">
+<div class="flex items-center space-x-2">
+<h1 class="text-xl font-bold flex items-center">
+        Stock 
+        <span class="mx-1">
+<svg class="h-6 w-6 inline" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</span>
+        Count
+      </h1>
+</div>
+<div class="flex items-center space-x-4">
+<!-- Help Icon -->
+<div class="border-2 border-white rounded-full w-8 h-8 flex items-center justify-center">
+<span class="font-bold">?</span>
+</div>
+<!-- Share Icon -->
+<svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<!-- More Icon -->
+<svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+</header>
+<!-- END: MainHeader -->
+<!-- BEGIN: MainContent -->
+<main class="flex-grow relative bg-white flex flex-col p-6 space-y-4">
+<!-- These background cards represent the items visible behind the overlay in the screenshot -->
+<div class="border border-gray-300 rounded p-12 w-full h-40"></div>
+<div class="border border-gray-300 rounded p-12 w-full h-80"></div>
+<!-- Modal Overlay -->
+<div class="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center p-4 z-10" data-purpose="modal-overlay">
+<!-- BEGIN: CountInfoDialog -->
+<div class="w-full max-w-sm flex flex-col rounded overflow-hidden shadow-2xl h-5/6" data-purpose="count-info-modal">
+<!-- Dialog Header -->
+<div class="bg-app-red text-white py-3 flex justify-center items-center space-x-2">
+<span class="text-lg font-semibold tracking-wide">Count</span>
+<svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+<span class="text-lg font-semibold tracking-wide">Info</span>
+</div>
+<!-- Dialog Content -->
+<div class="bg-modal-content flex-grow p-6 text-gray-300">
+<form class="space-y-6">
+<!-- Doc Num Field -->
+<div class="flex items-end">
+<label class="w-28 text-sm font-medium mb-1" for="doc-num">Doc Num</label>
+<input class="flex-grow input-underline text-white text-sm focus:ring-0" id="doc-num" readonly="" type="text" value="PI20260730004">
+</div>
+<!-- Count Date Field -->
+<div class="flex items-end">
+<label class="w-28 text-sm font-medium mb-1" for="count-date">Count Date</label>
+<input class="flex-grow input-underline text-white text-sm focus:ring-0" id="count-date" readonly="" type="text" value="30-Jul-2026">
+</div>
+<!-- Inspector Field -->
+<div class="flex items-end">
+<label class="w-28 text-sm font-medium mb-1" for="inspector">Inspector</label>
+<input class="flex-grow input-underline text-white text-sm focus:ring-0" id="inspector" type="text">
+</div>
+<!-- Location Field -->
+<div class="flex items-end">
+<label class="w-28 text-sm font-medium mb-1" for="location">Location</label>
+<input class="flex-grow input-underline text-white text-sm focus:ring-0" id="location" type="text">
+</div>
+<!-- OK Button Container -->
+<div class="pt-4 flex justify-center">
+<button class="bg-app-red text-white font-bold py-2 px-10 rounded shadow hover:bg-red-800 transition-colors uppercase text-sm" type="button">
+                OK
+              </button>
+</div>
+</form>
+</div>
+</div>
+<!-- END: CountInfoDialog -->
+</div>
+</main>
+<!-- END: MainContent -->
+<!-- BEGIN: Footer -->
+<footer class="bg-white border-t border-red-800 py-2 px-4 flex justify-center items-center space-x-2" data-purpose="branding-footer">
+<span class="text-xs text-red-800 font-semibold">powered by :</span>
+<img alt="STEM Logo" class="h-6" data-purpose="stem-logo" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBm_7acPCdD4GNuQ-2FmQErIQ7DnCI1deMOMvqYV6S-LuxjWlaieDB5HvsMkjsukuMuXnWG8Odb8NyxFD1vjg60UwHu-_3Hvj5z1kNuzYMIfQSfYWIlmdb9raewiJKAB9A5oERWcDPBCKSk9dGEmq3G_a2IkoCbxKbnmNj6DhluMePE9x1rJ7ZYrklxZyCOliXt0walfS1JBgx9hW22ZjmgiBNEvw9xRFXKrB_2alGh5oUX7YWjQ3Si">
+<div class="h-8 w-px bg-gray-300 mx-1"></div>
+<img alt="SAP Gold Partner" class="h-8" data-purpose="sap-logo" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAkjA0Gc2rAciC70LRoq8UatS4kfs4DM_Hc1pK_ZjT7bUs2IKfZ5gF8LxVRQNlzu3UNPqpUt6NMMQSjNqEealNETIPWCGWOKca9MEJc-CiliCE_IFs2vB8YltHY1CDOW1SR-PyWzpQVEPLL-qFBHWFCfH1whA1k73LCOuDMXYTi-bqCNGsxHqu0IwMtHAr6fFBunvYbpnqi28eEZcULOXmaGDvp866tNDho1-u6KDE-IqTXc6Rlra_i">
+</footer>
+<!-- END: Footer -->
+<!-- BEGIN: NavigationBar -->
+<nav class="bg-black py-2 px-10 flex justify-between items-center" data-purpose="bottom-nav-bar">
+<div class="w-4 h-4 border-2 border-white rounded-sm"></div>
+<div class="w-4 h-4 border-2 border-white rounded-full"></div>
+<div class="text-white text-xl">◀</div>
+</nav>
+<!-- END: NavigationBar -->
+</body></html>

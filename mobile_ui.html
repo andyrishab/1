@@ -1,0 +1,1559 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>InventoryFlow — Stock Count</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode:"class",
+    theme:{extend:{
+      colors:{
+        "primary":"#91000a","on-primary":"#ffffff","primary-container":"#b71c1c","on-primary-container":"#ffcac4",
+        "primary-fixed":"#ffdad6","primary-fixed-dim":"#ffb4ab","on-primary-fixed":"#410002","on-primary-fixed-variant":"#93000b",
+        "secondary":"#5d5f5f","on-secondary":"#ffffff","secondary-container":"#dfe0e0","on-secondary-container":"#616363",
+        "surface":"#fcf9f8","surface-dim":"#dcd9d9","surface-variant":"#e5e2e1","on-surface-variant":"#5b403d",
+        "surface-container-lowest":"#ffffff","surface-container-low":"#f6f3f2","surface-container":"#f0eded",
+        "surface-container-high":"#eae7e7","surface-container-highest":"#e5e2e1",
+        "on-surface":"#1b1c1c","on-background":"#1b1c1c","background":"#fcf9f8",
+        "outline":"#8f706c","outline-variant":"#e4beb9",
+        "error":"#ba1a1a","on-error":"#ffffff","error-container":"#ffdad6","on-error-container":"#93000a",
+        "inverse-surface":"#303030","inverse-on-surface":"#f3f0ef","inverse-primary":"#ffb4ab",
+        "secondary-fixed":"#e2e2e2","secondary-fixed-dim":"#c6c6c7","on-secondary-fixed":"#1a1c1c","on-secondary-fixed-variant":"#454747",
+      },
+      borderRadius:{"DEFAULT":"0.25rem","lg":"0.5rem","xl":"0.75rem","full":"9999px"},
+      spacing:{"xs":"4px","sm":"8px","base":"8px","md":"16px","lg":"24px","xl":"32px","edge_margin":"16px","gutter":"12px"},
+    }}
+  }
+</script>
+<style>
+  body{font-family:'Inter',sans-serif;-webkit-tap-highlight-color:transparent;background:#fcf9f8;}
+  *{scrollbar-width:none;} ::-webkit-scrollbar{display:none;}
+  .screen{display:none;position:absolute;inset:0;overflow-y:auto;background:#fcf9f8;animation:slideIn .28s cubic-bezier(.4,0,.2,1);}
+  .screen.active{display:block;}
+  .screen-back{animation:slideOut .28s cubic-bezier(.4,0,.2,1);}
+  @keyframes slideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}
+  @keyframes slideOut{from{transform:translateX(-10%)}to{transform:translateX(0)}}
+  .material-symbols-outlined{font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24;display:inline-block;line-height:1;text-transform:none;letter-spacing:normal;word-wrap:normal;white-space:nowrap;direction:ltr;}
+  .font-mono{font-family:'JetBrains Mono',monospace;}
+  .swipe-container{transition:transform .3s cubic-bezier(.4,0,.2,1);}
+  .category-card:active{transform:scale(0.98);}
+  .category-card{transition:transform .1s ease,box-shadow .2s ease;}
+  #toast{transition:opacity .3s,transform .3s;} #toast.hidden{opacity:0;transform:translateY(8px);}
+  .count-active{border:2px solid #2e7d32!important;}
+  /* Loading skeleton */
+  .skeleton{background:linear-gradient(90deg,#f0eded 25%,#e5e2e1 50%,#f0eded 75%);background-size:200% 100%;animation:shimmer 1.2s infinite;}
+  @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+  .skeleton-line{height:14px;border-radius:4px;margin-bottom:8px;}
+  /* Pulse for FAB */
+  .fab-pulse{animation:fabPulse 2s infinite;}
+  @keyframes fabPulse{0%,100%{box-shadow:0 0 0 0 rgba(145,0,10,.4)}70%{box-shadow:0 0 0 10px rgba(145,0,10,0)}}
+</style>
+</head>
+
+<body class="bg-background text-on-surface min-h-screen overflow-hidden select-none">
+<div id="app-shell" class="flex flex-col h-screen max-w-[430px] mx-auto shadow-2xl relative overflow-hidden">
+
+  <!-- TOP APP BAR -->
+  <header id="app-header" class="bg-primary text-on-primary px-3 flex items-center justify-between h-14 flex-shrink-0 z-40">
+    <div class="flex items-center gap-2">
+      <button id="hdr-back" class="material-symbols-outlined p-1.5 rounded-full hover:bg-white/20 active:scale-90 hidden" onclick="goBack()">arrow_back</button>
+      <button id="hdr-menu" class="material-symbols-outlined p-1.5 rounded-full hover:bg-white/20 active:scale-90" onclick="showMenuOptions()">menu</button>
+      <h1 id="hdr-title" class="font-semibold text-lg leading-tight">InventoryFlow</h1>
+    </div>
+    <div class="flex items-center gap-0.5">
+      <button id="hdr-import" class="hidden p-1.5 rounded-full hover:bg-white/20 active:scale-90" onclick="importData()" title="Import">
+        <span class="material-symbols-outlined text-[20px]">upload</span>
+      </button>
+      <button id="hdr-export" class="hidden p-1.5 rounded-full hover:bg-white/20 active:scale-90" onclick="exportData()" title="Export">
+        <span class="material-symbols-outlined text-[20px]">download</span>
+      </button>
+      <button id="hdr-search" class="p-1.5 rounded-full hover:bg-white/20 active:scale-90" onclick="focusSearch()">
+        <span class="material-symbols-outlined text-[20px]">search</span>
+      </button>
+      <button class="p-1.5 rounded-full hover:bg-white/20 active:scale-90" onclick="showMenuOptions()">
+        <span class="material-symbols-outlined text-[20px]">more_vert</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- SCREENS -->
+  <div id="screens" class="flex-1 relative overflow-hidden">
+
+    <!-- ■ HOME -->
+    <div class="screen active pb-6" id="sc-home">
+      <main class="px-6 py-8">
+        <div class="grid grid-cols-2 gap-4">
+          <div class="bg-surface-container-lowest border border-surface-variant rounded-xl p-6 flex flex-col items-center justify-center shadow-sm aspect-square cursor-pointer active:bg-surface-container-high category-card" onclick="go('sc-settings','Menu Setting',true)">
+            <svg class="mb-4" fill="none" height="80" viewBox="0 0 60 90" width="55" xmlns="http://www.w3.org/2000/svg"><rect height="90" rx="6" stroke="#4b5563" stroke-width="3" width="50" x="5" y="0"/><circle cx="30" cy="80" fill="#4b5563" r="2.5"/><circle cx="45" cy="40" fill="white" r="18" stroke="#4b5563" stroke-width="2"/><path d="M45 28L47 30M45 52L43 50M33 40L35 42M57 40L55 38" stroke="#91000a" stroke-width="3"/><circle cx="45" cy="40" fill="#91000a" r="10"/><path d="M45 34L45 46M39 40L51 40" stroke="white" stroke-width="2"/></svg>
+            <span class="text-on-surface font-semibold text-base text-center">Setting</span>
+          </div>
+          <div class="bg-surface-container-lowest border border-surface-variant rounded-xl p-6 flex flex-col items-center justify-center shadow-sm aspect-square cursor-pointer active:bg-surface-container-high category-card" onclick="go('sc-master','Master Data',true)">
+            <svg class="mb-4" fill="none" height="60" viewBox="0 0 80 60" width="75" xmlns="http://www.w3.org/2000/svg"><path d="M5 10H30L35 15H75V55H5V10Z" fill="#4b5563"/><rect fill="white" height="40" stroke="#4b5563" stroke-width="1" width="40" x="15" y="0"/><line stroke="#91000a" stroke-width="2" x1="20" x2="50" y1="10" y2="10"/><line stroke="#91000a" stroke-width="2" x1="20" x2="50" y1="18" y2="18"/><line stroke="#4b5563" stroke-width="2" x1="20" x2="40" y1="26" y2="26"/></svg>
+            <span class="text-on-surface font-semibold text-base text-center">Master Data</span>
+          </div>
+          <div class="bg-surface-container-lowest border border-surface-variant rounded-xl p-6 flex flex-col items-center justify-center shadow-sm aspect-square cursor-pointer active:bg-surface-container-high category-card" onclick="go('sc-countinfo','Start Counting',true)">
+            <svg class="mb-4" fill="none" height="70" viewBox="0 0 80 70" width="75" xmlns="http://www.w3.org/2000/svg"><path d="M45 5C55 5 60 7 60 12V25L50 35H30L20 25V12C20 7 25 5 35 5H45Z" fill="white" stroke="#4b5563" stroke-width="2"/><path d="M30 35L35 65H55L60 35" fill="white" stroke="#4b5563" stroke-width="2"/><rect fill="#91000a" height="10" width="30" x="25" y="10"/><path d="M10 25C15 20 20 22 25 25" opacity="0.5" stroke="#91000a" stroke-width="2"/><path d="M5 30C12 22 18 25 25 30" opacity="0.3" stroke="#91000a" stroke-width="2"/></svg>
+            <span class="text-on-surface font-semibold text-base text-center">Start Counting</span>
+          </div>
+          <div class="bg-surface-container-lowest border border-surface-variant rounded-xl p-6 flex flex-col items-center justify-center shadow-sm aspect-square cursor-pointer active:bg-surface-container-high category-card" onclick="go('sc-result','View Result')">
+            <svg class="mb-4" fill="none" height="75" viewBox="0 0 60 75" width="55" xmlns="http://www.w3.org/2000/svg"><rect fill="white" height="60" rx="2" stroke="#4b5563" stroke-width="3" width="50" x="5" y="10"/><rect fill="#4b5563" height="8" rx="2" width="20" x="20" y="5"/><line stroke="#9ca3af" stroke-width="2" x1="15" x2="45" y1="25" y2="25"/><line stroke="#9ca3af" stroke-width="2" x1="15" x2="45" y1="35" y2="35"/><line stroke="#9ca3af" stroke-width="2" x1="15" x2="45" y1="45" y2="45"/><line stroke="#9ca3af" stroke-width="2" x1="15" x2="35" y1="55" y2="55"/><circle cx="50" cy="20" fill="#91000a" r="8"/><path d="M47 20L49 22L53 18" stroke="white" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg>
+            <span class="text-on-surface font-semibold text-base text-center">View Result</span>
+          </div>
+        </div>
+        <div class="mt-10 flex justify-center">
+          <button class="bg-primary text-on-primary font-bold py-3 px-14 rounded shadow-md active:scale-95 transition-all text-base tracking-widest" onclick="exitApp()">EXIT</button>
+        </div>
+      </main>
+      <footer class="bg-surface border-t border-surface-variant py-3 px-4">
+        <div class="flex items-center justify-center gap-3">
+          <span class="text-xs text-on-surface-variant">powered by :</span>
+          <span class="text-blue-900 font-black text-xl italic tracking-tighter">NEXORION</span>
+          <div class="h-4 w-px bg-surface-variant"></div>
+          <div class="flex flex-col text-[8px] leading-none text-blue-800 font-bold"><span>INNOVATION</span><span>DESIGN</span><span>VALUE</span></div>
+          <div class="flex flex-col items-center bg-surface-container border border-yellow-400 px-2 py-0.5 rounded"><span class="text-blue-600 font-bold text-xs leading-none">SAP</span><div class="w-full h-0.5 bg-yellow-400 my-0.5"></div><span class="text-[7px] font-bold text-on-surface-variant uppercase">Gold Partner</span></div>
+        </div>
+      </footer>
+    </div>
+
+    <!-- ■ DASHBOARD -->
+    <div class="screen pb-24" id="sc-dashboard">
+      <main class="p-edge_margin space-y-4">
+        <!-- Stats row -->
+        <div class="grid grid-cols-2 gap-4" id="dash-stats">
+          <div class="bg-surface-container-lowest border border-surface-variant p-lg rounded-xl shadow-sm skeleton" style="height:106px"></div>
+          <div class="bg-surface-container-lowest border border-surface-variant p-lg rounded-xl shadow-sm skeleton" style="height:106px"></div>
+          <div class="bg-orange-50 border border-orange-200 p-lg rounded-xl shadow-sm skeleton" style="height:106px"></div>
+          <div class="bg-error-container border border-outline-variant p-lg rounded-xl shadow-sm skeleton" style="height:106px"></div>
+        </div>
+        <!-- Trend chart -->
+        <div class="bg-surface-container-lowest border border-surface-variant p-lg rounded-xl shadow-sm">
+          <div class="flex items-center justify-between mb-lg">
+            <h2 class="font-semibold text-xl text-on-surface">Inventory Trend</h2>
+            <div class="flex gap-2">
+              <button id="tab-w" class="px-3 py-1 bg-primary text-on-primary text-xs rounded-full font-semibold" onclick="setTab('w')">Weekly</button>
+              <button id="tab-m" class="px-3 py-1 bg-surface-container text-on-surface-variant text-xs rounded-full font-semibold" onclick="setTab('m')">Monthly</button>
+            </div>
+          </div>
+          <div class="flex items-end justify-between gap-2 h-20 px-1" id="chart-bars"></div>
+          <div class="flex justify-between mt-2 px-1 text-on-surface-variant text-[10px] font-mono">
+            <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+          </div>
+        </div>
+        <!-- Quick actions -->
+        <div class="grid grid-cols-2 gap-4">
+          <button class="aspect-square bg-primary text-on-primary rounded-xl flex flex-col items-center justify-center gap-3 active:scale-95 transition-transform shadow-md" onclick="go('sc-countinfo','Start Counting',true)">
+            <span class="material-symbols-outlined text-3xl">inventory</span><span class="font-semibold text-sm">Start Counting</span>
+          </button>
+          <button class="aspect-square bg-surface-container-lowest border border-surface-variant text-on-surface rounded-xl flex flex-col items-center justify-center gap-3 active:scale-95 shadow-sm" onclick="go('sc-products','Product Master',true)">
+            <span class="material-symbols-outlined text-3xl text-primary">edit_document</span><span class="font-semibold text-sm">Product Master</span>
+          </button>
+          <button class="aspect-square bg-surface-container-lowest border border-surface-variant text-on-surface rounded-xl flex flex-col items-center justify-center gap-3 active:scale-95 shadow-sm" onclick="go('sc-categories','Master Categories',true)">
+            <span class="material-symbols-outlined text-3xl text-primary">category</span><span class="font-semibold text-sm">Categories</span>
+          </button>
+          <button class="aspect-square bg-secondary-container text-on-secondary-container rounded-xl flex flex-col items-center justify-center gap-3 active:scale-95 shadow-sm" onclick="go('sc-countinfo','Start Counting',true)">
+            <span class="material-symbols-outlined text-3xl">qr_code_scanner</span><span class="font-semibold text-sm">Scan Barcode</span>
+          </button>
+        </div>
+        <!-- Recent movements -->
+        <div class="bg-surface-container-lowest border border-surface-variant p-lg rounded-xl shadow-sm">
+          <div class="flex items-center justify-between mb-lg">
+            <h2 class="font-semibold text-xl text-on-surface">Recent Movements</h2>
+            <button class="text-primary font-semibold text-sm" onclick="go('sc-result','View Result')">View All</button>
+          </div>
+          <div id="movements-list" class="space-y-4"><div class="skeleton skeleton-line w-full"></div><div class="skeleton skeleton-line w-4/5"></div></div>
+        </div>
+      </main>
+    </div>
+
+    <!-- ■ MASTER DATA MENU -->
+    <div class="screen pb-6" id="sc-master">
+      <main class="px-6 py-8">
+        <div class="grid grid-cols-2 gap-4">
+          <div class="bg-surface-container-lowest border border-surface-variant rounded-xl p-6 flex flex-col items-center justify-center shadow-sm aspect-square cursor-pointer active:bg-surface-container-high category-card" onclick="go('sc-products','Product Master',true)">
+            <span class="material-symbols-outlined text-primary text-6xl mb-4">inventory_2</span>
+            <span class="text-on-surface font-semibold text-base text-center">Master Product</span>
+          </div>
+          <div class="bg-surface-container-lowest border border-surface-variant rounded-xl p-6 flex flex-col items-center justify-center shadow-sm aspect-square cursor-pointer active:bg-surface-container-high category-card" onclick="go('sc-categories','Master Categories',true)">
+            <span class="material-symbols-outlined text-primary text-6xl mb-4">category</span>
+            <span class="text-on-surface font-semibold text-base text-center">Master Categories</span>
+          </div>
+        </div>
+        <p class="text-center text-on-surface-variant text-xs mt-12 font-mono">powered by NEXORION® · SAP Gold Partner</p>
+      </main>
+    </div>
+
+    <!-- ■ PRODUCT MASTER -->
+    <div class="screen pb-28" id="sc-products">
+      <main class="px-edge_margin py-lg space-y-lg">
+        <div class="relative">
+          <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><span class="material-symbols-outlined text-outline">search</span></div>
+          <input id="prod-search" class="block w-full pl-11 pr-4 py-3 bg-surface-container-lowest border border-outline rounded-xl focus:ring-2 focus:ring-primary focus:border-primary font-body-md placeholder:text-outline/60" placeholder="Search product name or SKU…" type="text" oninput="debouncedSearch()">
+        </div>
+        <div class="flex gap-2 overflow-x-auto pb-1" id="prod-chips">
+          <button class="prod-chip whitespace-nowrap px-4 py-2 rounded-full bg-primary text-on-primary font-semibold text-sm shadow-sm" data-f="all" onclick="setProdFilter(this)">All</button>
+          <button class="prod-chip whitespace-nowrap px-4 py-2 rounded-full border border-outline text-on-surface-variant font-semibold text-sm" data-f="in" onclick="setProdFilter(this)">In Stock</button>
+          <button class="prod-chip whitespace-nowrap px-4 py-2 rounded-full border border-outline text-on-surface-variant font-semibold text-sm" data-f="low" onclick="setProdFilter(this)">Low Stock</button>
+          <button class="prod-chip whitespace-nowrap px-4 py-2 rounded-full border border-outline text-on-surface-variant font-semibold text-sm" data-f="out" onclick="setProdFilter(this)">Out of Stock</button>
+        </div>
+        <div id="prod-grid" class="grid grid-cols-1 gap-gutter">
+          <div class="skeleton" style="height:96px;border-radius:12px"></div>
+          <div class="skeleton" style="height:96px;border-radius:12px;opacity:.7"></div>
+          <div class="skeleton" style="height:96px;border-radius:12px;opacity:.5"></div>
+        </div>
+        <div id="prod-empty" class="hidden flex-col items-center py-16 text-on-surface-variant">
+          <span class="material-symbols-outlined text-6xl mb-3">search_off</span>
+          <p class="font-semibold text-lg">No products found</p>
+          <p class="text-sm mt-1">Try a different search or filter</p>
+        </div>
+      </main>
+      <button class="fixed bottom-24 right-6 w-14 h-14 bg-primary text-on-primary rounded-full shadow-xl flex items-center justify-center active:scale-95 z-50" onclick="openAddProductModal()" title="Add Product">
+        <span class="material-symbols-outlined text-[28px]">add</span>
+      </button>
+    </div>
+
+    <!-- ■ MASTER CATEGORIES -->
+    <div class="screen pb-28" id="sc-categories">
+      <main class="px-edge_margin pt-lg pb-xl space-y-gutter">
+        <div class="mb-lg">
+          <h2 class="font-semibold text-xl text-on-surface mb-1">Inventory Breakdown</h2>
+          <p class="text-sm text-on-surface-variant">Manage your industrial classification system and stock levels.</p>
+        </div>
+        <div class="grid grid-cols-1 gap-gutter" id="cat-list">
+          <div class="skeleton" style="height:72px;border-radius:12px"></div>
+          <div class="skeleton" style="height:72px;border-radius:12px;opacity:.7"></div>
+        </div>
+        <div class="mt-xl">
+          <h2 class="font-semibold text-xl text-on-surface mb-md">Analytics Insights</h2>
+          <div class="bg-inverse-surface rounded-xl p-lg text-inverse-on-surface overflow-hidden relative mb-gutter">
+            <div class="relative z-10">
+              <p class="text-[10px] uppercase tracking-widest text-primary-fixed-dim font-mono">Warehouse Efficiency</p>
+              <h4 class="font-bold text-3xl mt-2 mb-4">+12.5%<br>Stock Turnover</h4>
+              <button class="bg-primary text-white font-semibold text-sm px-6 py-2 rounded-full active:scale-95" onclick="showToast('Generating analytics report…')">Generate Report</button>
+            </div>
+            <div class="absolute right-[-20px] top-[-20px] w-48 h-48 bg-primary/20 rounded-full blur-3xl"></div>
+          </div>
+          <div class="bg-surface-container border border-surface-variant rounded-xl p-lg">
+            <span class="material-symbols-outlined text-error text-[40px]">warning</span>
+            <h4 class="font-semibold text-xl mt-4">Low Stock Alerts</h4>
+            <p class="text-sm text-on-surface-variant mt-2" id="low-alert-text">Loading…</p>
+            <a class="text-primary font-semibold text-sm mt-4 flex items-center gap-1" href="#" onclick="go('sc-products','Product Master',true);setProdFilterByName('low');return false;">Review Alerts <span class="material-symbols-outlined text-base">chevron_right</span></a>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- ■ COUNT INFO -->
+    <div class="screen" id="sc-countinfo">
+      <div class="min-h-full bg-surface-container-lowest flex flex-col p-6 gap-4">
+        <div class="border border-surface-variant rounded p-10 w-full opacity-30 h-24"></div>
+        <div class="border border-surface-variant rounded p-10 w-full opacity-20 h-32"></div>
+      </div>
+      <div class="absolute inset-0 bg-black/30 flex items-center justify-center p-6 z-10">
+        <div class="w-full max-w-sm flex flex-col rounded overflow-hidden shadow-2xl">
+          <div class="bg-primary text-on-primary py-4 flex justify-center items-center gap-2">
+            <span class="text-lg font-semibold tracking-wide">Count</span>
+            <span class="material-symbols-outlined">inventory</span>
+            <span class="text-lg font-semibold tracking-wide">Info</span>
+          </div>
+          <div class="bg-[#555555] flex-grow p-6 text-gray-200">
+            <form class="space-y-6" onsubmit="submitCountInfo();return false;">
+              <div class="flex items-end gap-4">
+                <label class="w-28 text-sm font-medium text-gray-300">Doc Num</label>
+                <input id="ci-docnum" class="flex-grow bg-transparent border-0 border-b border-gray-400 focus:border-white focus:outline-none text-white text-sm pb-1 font-mono" type="text" placeholder="SC-2026-001">
+              </div>
+              <div class="flex items-end gap-4">
+                <label class="w-28 text-sm font-medium text-gray-300">Count Date</label>
+                <input id="ci-date" class="flex-grow bg-transparent border-0 border-b border-gray-400 focus:border-white focus:outline-none text-white text-sm pb-1" type="date">
+              </div>
+              <div class="flex items-end gap-4">
+                <label class="w-28 text-sm font-medium text-gray-300">Inspector</label>
+                <input id="ci-inspector" class="flex-grow bg-transparent border-0 border-b border-gray-400 focus:border-white focus:outline-none text-white text-sm pb-1" type="text" placeholder="Your name">
+              </div>
+              <div class="flex items-end gap-4">
+                <label class="w-28 text-sm font-medium text-gray-300">Location</label>
+                <input id="ci-location" class="flex-grow bg-transparent border-0 border-b border-gray-400 focus:border-white focus:outline-none text-white text-sm pb-1" type="text" placeholder="Warehouse A">
+              </div>
+              <div class="pt-4 flex justify-center">
+                <button type="submit" class="bg-primary text-white font-bold py-2 px-10 rounded shadow active:scale-95 uppercase text-sm" id="ci-ok">OK</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ■ STOCK COUNTING -->
+    <div class="screen pb-32" id="sc-counting">
+      <main class="w-full max-w-xl mx-auto px-edge_margin py-md space-y-md">
+        
+        <!-- Doc Number Header Label -->
+        <div class="flex justify-between items-center px-1">
+          <span class="text-xs font-mono text-secondary font-semibold" id="cnt-doc-label">#PI20260730003</span>
+          <span class="text-xs font-mono text-secondary" id="cnt-inspector-label">Inspector: —</span>
+        </div>
+
+        <!-- EMBEDDED CAMERA VIEWPORT CARD -->
+        <div class="relative w-full h-56 rounded-xl overflow-hidden bg-black border border-surface-variant shadow-md">
+          <!-- Html5Qrcode Embedded Container -->
+          <div id="embed-camera-reader" class="w-full h-full object-cover"></div>
+
+          <!-- Laser Scan Line with Center Yellow Dot -->
+          <div class="absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none z-10 px-4">
+            <div class="w-full h-[2px] bg-red-600 shadow-[0_0_10px_rgba(255,0,0,1)] flex items-center justify-center relative">
+              <div class="w-2.5 h-2.5 bg-yellow-400 rounded-full border border-yellow-100 shadow"></div>
+            </div>
+          </div>
+
+          <!-- Top-Right Torch Button -->
+          <button class="absolute top-3 right-3 z-20 w-9 h-9 rounded-full bg-black/50 backdrop-blur-md text-white flex items-center justify-center border border-white/20 active:scale-90" onclick="toggleCameraTorch()" title="Toggle Flashlight">
+            <span class="material-symbols-outlined text-lg">flashlight_on</span>
+          </button>
+        </div>
+
+        <!-- SEARCH AND TOTALS ROW -->
+        <div class="flex justify-between items-center px-1 py-1 border-b border-surface-variant/40">
+          <button class="text-secondary hover:text-primary active:scale-90 transition-transform flex items-center gap-1" onclick="focusBcInput()" title="Focus Search">
+            <span class="material-symbols-outlined text-2xl">search</span>
+          </button>
+          
+          <div class="flex items-center gap-1.5 text-xs font-mono">
+            <span class="material-symbols-outlined text-primary text-base">chat_bubble</span>
+            <span class="text-primary font-bold">Total : <span id="cnt-total-scanned">0</span> (<span id="cnt-total-expected">0</span>)</span>
+          </div>
+        </div>
+
+        <!-- CURRENT PRODUCT FOCUS CARD -->
+        <div class="bg-surface-container-lowest border border-surface-variant rounded-xl p-lg space-y-md shadow-sm" id="cnt-card">
+          <div>
+            <h3 class="font-semibold text-xl text-on-surface leading-tight" id="cnt-prod-name">Scan a barcode to begin</h3>
+            <p class="text-xs font-mono text-on-surface-variant mt-1" id="cnt-prod-info">Align barcode with red laser line above</p>
+          </div>
+          
+          <!-- Quantity Comparison -->
+          <div class="grid grid-cols-2 gap-lg py-md border-y border-surface-variant/30">
+            <div class="text-center">
+              <p class="text-[10px] font-mono text-secondary mb-1">Expected</p>
+              <p class="text-3xl font-bold text-secondary font-mono" id="cnt-expected">—</p>
+            </div>
+            <div class="text-center border-l border-surface-variant/30">
+              <p class="text-[10px] font-mono text-primary mb-1">Counted</p>
+              <p class="text-3xl font-bold text-primary font-mono transition-all" id="cnt-counted">0</p>
+            </div>
+          </div>
+
+          <!-- Stepper +/- Buttons -->
+          <div class="flex items-center justify-center gap-xl py-md">
+            <button class="w-16 h-16 rounded-full border-2 border-primary text-primary hover:bg-primary/5 active:scale-90 transition-all flex items-center justify-center" onclick="adjust(-1)">
+              <span class="material-symbols-outlined text-3xl" style="font-variation-settings:'wght' 600">remove</span>
+            </button>
+            <div class="text-center px-6">
+              <p class="text-[10px] font-mono text-secondary mb-1">Adjust Units</p>
+              <input class="w-20 text-center bg-transparent border-none text-3xl font-bold text-on-surface focus:outline-none p-0 font-mono" id="cnt-qty-inp" type="number" value="0" oninput="syncQty(this)">
+            </div>
+            <button class="w-16 h-16 rounded-full bg-primary text-white shadow-lg shadow-primary/20 active:scale-90 transition-all flex items-center justify-center" onclick="adjust(1)">
+              <span class="material-symbols-outlined text-3xl" style="font-variation-settings:'wght' 600">add</span>
+            </button>
+          </div>
+
+          <!-- Quick Navigation -->
+          <div class="grid grid-cols-4 gap-2">
+            <button class="flex flex-col items-center p-2 rounded-xl border border-surface-variant text-on-surface active:scale-95 hover:bg-surface-container-high" onclick="queueNav(-1)"><span class="material-symbols-outlined text-xl mb-0.5">arrow_back</span><span class="text-[10px] font-mono">Prev</span></button>
+            <button class="flex flex-col items-center p-2 rounded-xl border border-surface-variant text-on-surface active:scale-95 hover:bg-surface-container-high" onclick="queueNav(0)"><span class="material-symbols-outlined text-xl mb-0.5">skip_next</span><span class="text-[10px] font-mono">Skip</span></button>
+            <button class="flex flex-col items-center p-2 rounded-xl border border-primary text-primary active:scale-95 hover:bg-primary/5" onclick="queueNav(1)"><span class="material-symbols-outlined text-xl mb-0.5">arrow_forward</span><span class="text-[10px] font-mono">Next</span></button>
+            <button class="flex flex-col items-center p-2 rounded-xl bg-primary text-white shadow-md active:scale-95" onclick="finishCounting()"><span class="material-symbols-outlined text-xl mb-0.5" style="font-variation-settings:'FILL' 1">check_circle</span><span class="text-[10px] font-mono">Finish</span></button>
+          </div>
+        </div>
+
+        <!-- Manual Barcode Entry -->
+        <div class="bg-surface-container-low border border-surface-variant rounded-xl p-md">
+          <p class="text-[10px] font-mono text-secondary uppercase mb-2">Manual Barcode / SKU Entry</p>
+          <div class="flex gap-2">
+            <input id="bc-input" class="flex-1 bg-white border border-outline rounded-lg px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary" type="text" placeholder="Enter SKU or barcode…" onkeydown="if(event.key==='Enter')addItem()">
+            <button class="bg-primary text-on-primary rounded-lg px-4 py-2 font-semibold text-sm active:scale-95" onclick="addItem()">ADD</button>
+          </div>
+        </div>
+
+        <!-- Queue List -->
+        <div>
+          <h4 class="text-[10px] font-mono text-secondary uppercase tracking-widest mb-md">Count Queue (<span id="queue-count">0</span> items)</h4>
+          <div class="space-y-gutter" id="queue-list">
+            <div class="text-center py-8 text-on-surface-variant text-sm">No items counted yet</div>
+          </div>
+        </div>
+
+      </main>
+      
+      <!-- Scanner FAB -->
+      <button class="fixed bottom-6 right-edge_margin w-16 h-16 rounded-full bg-primary text-white shadow-xl flex items-center justify-center active:scale-90 z-50 fab-pulse" onclick="startEmbeddedCamera()" title="Toggle Camera Reader">
+        <span class="material-symbols-outlined text-3xl">qr_code_scanner</span>
+      </button>
+    </div>
+
+    <!-- ■ VIEW RESULT -->
+    <div class="screen pb-24" id="sc-result">
+      <main class="px-edge_margin py-lg space-y-lg">
+        <div class="grid grid-cols-3 gap-3" id="res-stats">
+          <div class="bg-surface-container-lowest border border-surface-variant rounded-xl p-md text-center shadow-sm"><p class="text-3xl font-bold text-primary font-mono" id="res-tot">0</p><p class="text-[10px] font-mono text-on-surface-variant mt-1">Counted</p></div>
+          <div class="bg-green-50 border border-green-200 rounded-xl p-md text-center shadow-sm"><p class="text-3xl font-bold text-green-700 font-mono" id="res-match">0</p><p class="text-[10px] font-mono text-green-700 mt-1">Match</p></div>
+          <div class="bg-error-container border border-outline-variant rounded-xl p-md text-center shadow-sm"><p class="text-3xl font-bold text-error font-mono" id="res-var">0</p><p class="text-[10px] font-mono text-error mt-1">Variance</p></div>
+        </div>
+        <!-- Past sessions -->
+        <div>
+          <h2 class="font-semibold text-xl text-on-surface mb-md">Count Sessions</h2>
+          <div id="sessions-list">
+            <div class="skeleton" style="height:80px;border-radius:12px;margin-bottom:10px"></div>
+            <div class="skeleton" style="height:80px;border-radius:12px;margin-bottom:10px;opacity:.7"></div>
+          </div>
+        </div>
+        <!-- Current session results -->
+        <div id="result-detail" class="hidden">
+          <h2 class="font-semibold text-xl text-on-surface mb-md">Current Session</h2>
+          <div id="result-list"></div>
+        </div>
+      </main>
+    </div>
+
+    <!-- ■ SETTINGS -->
+    <div class="screen pb-6" id="sc-settings">
+      <main class="flex-grow">
+        <div class="px-4 py-3 bg-surface"><h2 class="text-primary font-medium">General</h2></div>
+        <div class="divide-y divide-surface-variant border-t border-surface-variant">
+          <div class="px-4 py-4 cursor-pointer"><h3 class="text-on-surface text-lg font-medium">Quantity Decimal Digit</h3><p class="text-on-surface-variant text-sm mt-1" id="s-qty-dec">Number of decimal digits on quantity (0)</p></div>
+          <div class="px-4 py-4 cursor-pointer"><h3 class="text-on-surface text-lg font-medium">Selling Price Decimal Digit</h3><p class="text-on-surface-variant text-sm mt-1" id="s-price-dec">Number of decimal digits on selling price (2)</p></div>
+          <label class="px-4 py-4 flex items-start justify-between cursor-pointer">
+            <div class="flex-grow pr-4"><h3 class="text-on-surface text-lg font-medium">Show Selling Price</h3><p class="text-on-surface-variant text-sm mt-1">Show Selling Price in Start Counting and Master Data</p></div>
+            <input id="s-show-price" class="h-6 w-6 rounded border-outline-variant focus:ring-0 mt-1 accent-primary" type="checkbox" checked>
+          </label>
+          <label class="px-4 py-4 flex items-start justify-between cursor-pointer">
+            <div class="flex-grow pr-4"><h3 class="text-on-surface text-lg font-medium">Use Purchase Price / Cost</h3><p class="text-on-surface-variant text-sm mt-1">Use Purchase Price in Start Counting and Share Result</p></div>
+            <input id="s-use-cost" class="h-6 w-6 rounded border-outline-variant focus:ring-0 mt-1 accent-primary" type="checkbox">
+          </label>
+          <label class="px-4 py-4 flex items-start justify-between cursor-pointer">
+            <div class="flex-grow pr-4"><h3 class="text-on-surface text-lg font-medium">Google Sheets Sync</h3><p class="text-on-surface-variant text-sm mt-1">Auto-sync inventory to Google Sheets (requires credentials.json)</p></div>
+            <input class="h-6 w-6 rounded border-outline-variant focus:ring-0 mt-1 accent-primary" type="checkbox">
+          </label>
+        </div>
+        <div class="px-4 py-3 bg-surface mt-2"><h2 class="text-primary font-medium">Connection</h2></div>
+        <div class="divide-y divide-surface-variant border-t border-surface-variant">
+          <div class="px-4 py-4 cursor-pointer" onclick="testConn()"><h3 class="text-on-surface text-lg font-medium">Mobile API Server</h3><p class="text-on-surface-variant text-sm font-mono mt-1" id="s-api-status">localhost:8765 — Tap to test</p></div>
+          <div class="px-4 py-4 cursor-pointer" onclick="testGradio()"><h3 class="text-on-surface text-lg font-medium">Gradio Backend</h3><p class="text-on-surface-variant text-sm font-mono mt-1" id="s-gradio-status">localhost:7860-7862 — Tap to test</p></div>
+        </div>
+        <div class="px-4 py-3 mt-2">
+          <button class="w-full bg-primary text-on-primary rounded-xl py-3 font-bold active:scale-95 shadow" onclick="saveSettings()">Save Settings</button>
+        </div>
+        <footer class="bg-surface border-t border-surface-variant py-4 px-4 mt-4">
+          <div class="flex items-center justify-center gap-3">
+            <span class="text-primary text-sm font-medium">powered by :</span>
+            <span class="text-blue-900 font-black text-xl italic tracking-tighter">NEXORION</span>
+            <div class="h-6 w-px bg-surface-variant"></div>
+            <div class="flex flex-col items-center bg-surface-container border border-yellow-400 px-2 py-0.5 rounded"><span class="text-blue-600 font-bold text-xs leading-none">SAP</span><div class="w-full h-0.5 bg-yellow-400 my-0.5"></div><span class="text-[7px] font-bold text-on-surface-variant uppercase">Gold Partner</span></div>
+          </div>
+        </footer>
+      </main>
+    </div>
+
+  </div><!-- /screens -->
+
+  <!-- BOTTOM NAV -->
+  <nav id="bot-nav" class="h-20 bg-surface-container-lowest border-t border-surface-variant flex justify-around items-center px-4 pb-2 z-50 shadow-md flex-shrink-0 hidden">
+    <button class="nav-btn flex flex-col items-center py-1 active:scale-90 rounded-xl px-2 text-on-surface-variant" id="nb-dash" onclick="go('sc-dashboard','Dashboard')"><span class="material-symbols-outlined">dashboard</span><span class="text-[10px] font-mono mt-0.5">Dashboard</span></button>
+    <button class="nav-btn flex flex-col items-center py-1 active:scale-90 rounded-xl px-2 text-on-surface-variant" id="nb-scan" onclick="go('sc-countinfo','Start Counting',true)"><span class="material-symbols-outlined">qr_code_scanner</span><span class="text-[10px] font-mono mt-0.5">Scanner</span></button>
+    <button class="nav-btn flex flex-col items-center py-1 active:scale-90 rounded-xl px-2 text-on-surface-variant" id="nb-prod" onclick="go('sc-products','Product Master',true)"><span class="material-symbols-outlined">inventory_2</span><span class="text-[10px] font-mono mt-0.5">Products</span></button>
+    <button class="nav-btn flex flex-col items-center py-1 active:scale-90 rounded-xl px-2 text-on-surface-variant" id="nb-rep" onclick="go('sc-result','View Result')"><span class="material-symbols-outlined">analytics</span><span class="text-[10px] font-mono mt-0.5">Reports</span></button>
+    <button class="nav-btn flex flex-col items-center py-1 active:scale-90 rounded-xl px-2 text-on-surface-variant" id="nb-set" onclick="go('sc-settings','Menu Setting',true)"><span class="material-symbols-outlined">settings</span><span class="text-[10px] font-mono mt-0.5">Settings</span></button>
+  </nav>
+
+<!-- NAVIGATION DRAWER OVERLAY -->
+<div id="nav-drawer-overlay" class="fixed inset-0 bg-black/50 z-50 transition-opacity duration-300 opacity-0 pointer-events-none" onclick="toggleDrawer(false)">
+  <div id="nav-drawer" class="w-72 h-full bg-surface-container-lowest text-on-surface flex flex-col shadow-2xl transition-transform duration-300 -translate-x-full" onclick="event.stopPropagation()">
+    <!-- Drawer Header -->
+    <div class="bg-primary text-on-primary p-5 flex flex-col gap-2">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-3xl">inventory_2</span>
+          <h2 class="font-bold text-xl tracking-tight">InventoryFlow</h2>
+        </div>
+        <button class="material-symbols-outlined text-on-primary/80 hover:text-white p-1 rounded-full" onclick="toggleDrawer(false)">close</button>
+      </div>
+      <p class="text-xs text-on-primary/80 font-mono">Mobile Enterprise v1.0</p>
+    </div>
+
+    <!-- Drawer Navigation Items -->
+    <div class="flex-1 overflow-y-auto py-3 px-3 space-y-1">
+      <p class="px-3 text-[10px] font-mono text-outline uppercase tracking-wider mb-2">Main Navigation</p>
+      
+      <button class="w-full flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-surface-container active:bg-primary/10 text-on-surface font-semibold text-sm transition-colors text-left" onclick="drawerNav('sc-home','Stock Count')">
+        <span class="material-symbols-outlined text-primary">home</span>
+        <span>Home Menu</span>
+      </button>
+      
+      <button class="w-full flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-surface-container active:bg-primary/10 text-on-surface font-semibold text-sm transition-colors text-left" onclick="drawerNav('sc-dashboard','Dashboard')">
+        <span class="material-symbols-outlined text-primary">dashboard</span>
+        <span>Dashboard</span>
+      </button>
+
+      <button class="w-full flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-surface-container active:bg-primary/10 text-on-surface font-semibold text-sm transition-colors text-left" onclick="drawerNav('sc-master','Master Data',true)">
+        <span class="material-symbols-outlined text-primary">folder_open</span>
+        <span>Master Data</span>
+      </button>
+
+      <button class="w-full flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-surface-container active:bg-primary/10 text-on-surface font-semibold text-sm transition-colors text-left" onclick="drawerNav('sc-products','Product Master',true)">
+        <span class="material-symbols-outlined text-primary">inventory_2</span>
+        <span>Product Master</span>
+      </button>
+
+      <button class="w-full flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-surface-container active:bg-primary/10 text-on-surface font-semibold text-sm transition-colors text-left" onclick="drawerNav('sc-categories','Master Categories',true)">
+        <span class="material-symbols-outlined text-primary">category</span>
+        <span>Master Categories</span>
+      </button>
+
+      <div class="my-2 border-t border-surface-variant"></div>
+      <p class="px-3 text-[10px] font-mono text-outline uppercase tracking-wider mb-2">Stock Operations</p>
+
+      <button class="w-full flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-surface-container active:bg-primary/10 text-on-surface font-semibold text-sm transition-colors text-left" onclick="drawerNav('sc-countinfo','Start Counting',true)">
+        <span class="material-symbols-outlined text-primary">qr_code_scanner</span>
+        <span>Start Counting</span>
+      </button>
+
+      <button class="w-full flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-surface-container active:bg-primary/10 text-on-surface font-semibold text-sm transition-colors text-left" onclick="drawerNav('sc-result','View Result')">
+        <span class="material-symbols-outlined text-primary">analytics</span>
+        <span>View Results & Reports</span>
+      </button>
+
+      <div class="my-2 border-t border-surface-variant"></div>
+      <p class="px-3 text-[10px] font-mono text-outline uppercase tracking-wider mb-2">System</p>
+
+      <button class="w-full flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-surface-container active:bg-primary/10 text-on-surface font-semibold text-sm transition-colors text-left" onclick="drawerNav('sc-settings','Menu Setting',true)">
+        <span class="material-symbols-outlined text-primary">settings</span>
+        <span>Menu Settings</span>
+      </button>
+    </div>
+
+    <!-- Drawer Footer -->
+    <div class="p-4 border-t border-surface-variant bg-surface-container-low flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="text-xs text-on-surface-variant">powered by:</span>
+        <span class="text-blue-900 font-black text-base italic tracking-tighter">NEXORION</span>
+        <span class="text-[9px] bg-yellow-400 text-blue-900 font-bold px-1.5 py-0.5 rounded">SAP Gold</span>
+      </div>
+      <button class="material-symbols-outlined text-error hover:bg-error-container p-2 rounded-full" onclick="toggleDrawer(false);exitApp()" title="Exit App">power_settings_new</button>
+    </div>
+  </div>
+</div>
+
+<!-- CAMERA SCANNER MODAL OVERLAY -->
+<div id="camera-scanner-modal" class="fixed inset-0 bg-black/90 z-50 transition-all duration-300 opacity-0 pointer-events-none flex flex-col justify-between">
+  <!-- Top Bar -->
+  <div class="bg-black/60 backdrop-blur-md px-4 py-3 flex items-center justify-between z-20 border-b border-white/10">
+    <div class="flex items-center gap-2 text-white">
+      <span class="material-symbols-outlined text-primary text-2xl">qr_code_scanner</span>
+      <span class="font-bold text-base tracking-wide">Live Camera Barcode Scanner</span>
+    </div>
+    <button class="material-symbols-outlined text-white/80 hover:text-white p-1 rounded-full text-2xl" onclick="closeCameraScanner()">close</button>
+  </div>
+
+  <!-- Live Video Reader Container -->
+  <div class="relative flex-1 flex items-center justify-center overflow-hidden bg-black">
+    <div id="camera-reader" class="w-full max-w-sm h-full max-h-[400px]"></div>
+    
+    <!-- Scanner Visual Reticle Frame -->
+    <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+      <div class="relative w-64 h-64 border-2 border-white/20 rounded-xl overflow-hidden shadow-2xl">
+        <div class="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-primary rounded-tl-lg"></div>
+        <div class="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-primary rounded-tr-lg"></div>
+        <div class="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-primary rounded-bl-lg"></div>
+        <div class="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-primary rounded-br-lg"></div>
+        <div class="scan-line absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary to-transparent shadow-[0_0_15px_rgba(145,0,10,0.8)]"></div>
+      </div>
+    </div>
+
+    <!-- Scanner Status Hint -->
+    <div class="absolute top-4 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-md px-4 py-1.5 rounded-full text-white font-mono text-[11px] border border-white/10 z-10 text-center">
+      POINT CAMERA AT BARCODE / QR CODE
+    </div>
+  </div>
+
+  <!-- Bottom Action Bar -->
+  <div class="bg-black/80 backdrop-blur-md p-4 flex justify-between items-center z-20 border-t border-white/10">
+    <button class="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-white hover:bg-white/20 font-semibold text-xs active:scale-95" onclick="toggleCameraTorch()">
+      <span class="material-symbols-outlined text-sm">flash_on</span>
+      <span id="torch-lbl">Torch Off</span>
+    </button>
+
+    <div class="text-xs text-white/70 font-mono text-center">Auto-Scan Active</div>
+
+    <button class="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-white hover:bg-white/20 font-semibold text-xs active:scale-95" onclick="switchCameraFacing()">
+      <span class="material-symbols-outlined text-sm">flip_camera_ios</span>
+      <span>Switch</span>
+    </button>
+  </div>
+</div>
+
+<!-- PRODUCT EDIT / ADD MODAL OVERLAY -->
+<div id="product-modal" class="fixed inset-0 bg-black/60 z-50 transition-opacity duration-300 opacity-0 pointer-events-none flex items-center justify-center p-4" onclick="closeProductModal()">
+  <div class="w-full max-w-md bg-surface-container-lowest text-on-surface rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]" onclick="event.stopPropagation()">
+    <!-- Header -->
+    <div class="bg-primary text-on-primary p-4 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-2xl" id="pm-icon">edit_square</span>
+        <h3 class="font-bold text-lg" id="pm-title">Edit Product</h3>
+      </div>
+      <button class="material-symbols-outlined text-on-primary/80 hover:text-white p-1 rounded-full text-xl" onclick="closeProductModal()">close</button>
+    </div>
+    <!-- Form Content -->
+    <form id="pm-form" class="p-5 overflow-y-auto space-y-4 flex-1" onsubmit="saveProductSubmit(event)">
+      <input type="hidden" id="pm-id" value="">
+      
+      <div>
+        <label class="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">Product Name *</label>
+        <input id="pm-name" required class="w-full bg-surface-container border border-outline rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary focus:outline-none" placeholder="e.g. Industrial Drill Bit">
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">SKU</label>
+          <input id="pm-sku" class="w-full bg-surface-container border border-outline rounded-xl px-3 py-2.5 text-sm font-mono focus:ring-2 focus:ring-primary focus:outline-none" placeholder="SKU-1001">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">Barcode</label>
+          <input id="pm-barcode" class="w-full bg-surface-container border border-outline rounded-xl px-3 py-2.5 text-sm font-mono focus:ring-2 focus:ring-primary focus:outline-none" placeholder="12345678">
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">Category</label>
+          <input id="pm-category" class="w-full bg-surface-container border border-outline rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary focus:outline-none" placeholder="Tools">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">Brand</label>
+          <input id="pm-brand" class="w-full bg-surface-container border border-outline rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary focus:outline-none" placeholder="Bosch">
+        </div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">Current Stock</label>
+          <input id="pm-stock" type="number" min="0" class="w-full bg-surface-container border border-outline rounded-xl px-3 py-2.5 text-sm font-mono focus:ring-2 focus:ring-primary focus:outline-none" value="0">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">Min Stock</label>
+          <input id="pm-minstock" type="number" min="0" class="w-full bg-surface-container border border-outline rounded-xl px-3 py-2.5 text-sm font-mono focus:ring-2 focus:ring-primary focus:outline-none" value="5">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">Unit</label>
+          <input id="pm-unit" class="w-full bg-surface-container border border-outline rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary focus:outline-none" value="pcs">
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">Selling Price (₹)</label>
+          <input id="pm-price" type="number" step="0.01" min="0" class="w-full bg-surface-container border border-outline rounded-xl px-3 py-2.5 text-sm font-mono focus:ring-2 focus:ring-primary focus:outline-none" placeholder="0.00">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">Purchase Price (₹)</label>
+          <input id="pm-purchase" type="number" step="0.01" min="0" class="w-full bg-surface-container border border-outline rounded-xl px-3 py-2.5 text-sm font-mono focus:ring-2 focus:ring-primary focus:outline-none" placeholder="0.00">
+        </div>
+      </div>
+
+      <div class="pt-3 flex justify-end gap-3 border-t border-surface-variant">
+        <button type="button" class="px-5 py-2.5 rounded-xl border border-outline text-on-surface font-semibold text-sm active:scale-95" onclick="closeProductModal()">Cancel</button>
+        <button type="submit" id="pm-save-btn" class="px-6 py-2.5 rounded-xl bg-primary text-on-primary font-bold text-sm shadow-md active:scale-95 flex items-center gap-1.5">
+          <span class="material-symbols-outlined text-base">save</span>
+          <span>Save Product</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast" class="hidden fixed bottom-28 left-1/2 -translate-x-1/2 bg-inverse-surface text-inverse-on-surface text-sm font-medium px-5 py-2.5 rounded-full shadow-lg z-50 whitespace-nowrap pointer-events-none"></div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// CONFIG — Dynamic API base URL detection
+// Works on localhost, 127.0.0.1, and gradio.live
+// ═══════════════════════════════════════════════════
+const API_PORT = 8765;
+
+function resolveApiBase() {
+  const h = window.location.hostname;
+  // If served directly from our FastAPI server (same port)
+  if (window.location.port === String(API_PORT)) {
+    return window.location.origin + '/api';
+  }
+  // If served from Gradio (different port) or gradio.live —
+  // still point to localhost:8765 as the API runs there.
+  // On gradio.live the user's mobile device must reach the API port directly.
+  if (h === 'localhost' || h === '127.0.0.1' || h === '0.0.0.0') {
+    return `http://localhost:${API_PORT}/api`;
+  }
+  // Custom host / gradio.live / ngrok — use same hostname, API port
+  return `http://${h}:${API_PORT}/api`;
+}
+
+const API = resolveApiBase();
+console.log('[InventoryFlow] API base URL:', API);
+
+const META = {
+  'sc-home':       {title:'Stock Count',       back:false,nav:false,imp:false,exp:false},
+  'sc-dashboard':  {title:'InventoryFlow',     back:false,nav:true, imp:false,exp:false},
+  'sc-master':     {title:'Master Data',       back:true, nav:false,imp:false,exp:false},
+  'sc-products':   {title:'Product Master',    back:true, nav:true, imp:true, exp:true},
+  'sc-categories': {title:'Master Categories', back:true, nav:true, imp:false,exp:false},
+  'sc-countinfo':  {title:'Stock Count',       back:true, nav:false,imp:false,exp:false},
+  'sc-counting':   {title:'Start Counting',    back:true, nav:true, imp:false,exp:false},
+  'sc-result':     {title:'View Result',       back:false,nav:true, imp:false,exp:true},
+  'sc-settings':   {title:'Menu Setting',      back:true, nav:false,imp:false,exp:false},
+};
+
+const NAV_MAP = {
+  'sc-dashboard':'nb-dash','sc-counting':'nb-scan','sc-countinfo':'nb-scan',
+  'sc-products':'nb-prod','sc-categories':'nb-prod','sc-master':'nb-prod',
+  'sc-result':'nb-rep','sc-settings':'nb-set',
+};
+
+// ═══════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════
+let cur = 'sc-home';
+let stack = [];
+let sessionId = null;
+let queue = [];           // {product, counted, item_id} local queue
+let qIdx = -1;            // current item index in queue
+let prodFilter = 'all';
+let searchTimer = null;
+let statsCache = null;
+
+// ═══════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════
+function go(id, title, push=false) {
+  if (id===cur) return;
+  document.getElementById(cur)?.classList.remove('active');
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.classList.add('active');
+  if(push) stack.push(cur);
+  cur = id;
+  const m = META[id]||{title:title||id,back:true,nav:true,imp:false,exp:false};
+  setHeader(m);
+  const nav = document.getElementById('bot-nav');
+  nav.classList.toggle('hidden', id==='sc-home'||id==='sc-countinfo');
+  // Highlight nav
+  document.querySelectorAll('.nav-btn').forEach(b=>{b.classList.remove('bg-primary-container','text-on-primary-container','rounded-full');b.classList.add('text-on-surface-variant');});
+  const nb = document.getElementById(NAV_MAP[id]);
+  if(nb){nb.classList.add('bg-primary-container','text-on-primary-container','rounded-full','px-4');nb.classList.remove('text-on-surface-variant','px-2');}
+  onEnter(id);
+}
+
+function goBack() {
+  if(!stack.length){go('sc-home','Stock Count');return;}
+  const prev = stack.pop();
+  document.getElementById(cur)?.classList.remove('active');
+  const el = document.getElementById(prev);
+  el?.classList.add('active');
+  cur=prev;
+  const m=META[prev]||{title:'',back:false,nav:false,imp:false,exp:false};
+  setHeader(m);
+  document.getElementById('bot-nav').classList.toggle('hidden',prev==='sc-home'||prev==='sc-countinfo');
+  document.querySelectorAll('.nav-btn').forEach(b=>{b.classList.remove('bg-primary-container','text-on-primary-container','rounded-full');b.classList.add('text-on-surface-variant');});
+  const nb=document.getElementById(NAV_MAP[prev]);
+  if(nb){nb.classList.add('bg-primary-container','text-on-primary-container','rounded-full','px-4');nb.classList.remove('text-on-surface-variant','px-2');}
+}
+
+function setHeader(m) {
+  document.getElementById('hdr-title').textContent = m.title;
+  document.getElementById('hdr-back').classList.toggle('hidden',!m.back);
+  document.getElementById('hdr-menu').classList.toggle('hidden',m.back);
+  document.getElementById('hdr-import').classList.toggle('hidden',!m.imp);
+  document.getElementById('hdr-export').classList.toggle('hidden',!m.exp);
+}
+
+// ═══════════════════════════════════════════════════
+// API HELPERS
+// ═══════════════════════════════════════════════════
+async function api(path, opts={}) {
+  try {
+    const r = await fetch(API+path, {headers:{'Content-Type':'application/json'},...opts});
+    if(!r.ok) { console.warn('API error',r.status,path); return null; }
+    return r.json();
+  } catch(e) { console.warn('API unreachable',e.message); return null; }
+}
+
+// ═══════════════════════════════════════════════════
+// ON SCREEN ENTER
+// ═══════════════════════════════════════════════════
+function onEnter(id) {
+  if(id==='sc-dashboard') loadDashboard();
+  if(id==='sc-products')  loadProducts();
+  if(id==='sc-categories')loadCategories();
+  if(id==='sc-result')    loadSessions();
+  if(id==='sc-settings')  loadSettings();
+}
+
+// ═══════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════
+const WD=[45,62,38,80,55,90,70], MD=[300,420,380,500,450,610,580];
+const DAYS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+function renderChart(data) {
+  const mx=Math.max(...data);
+  document.getElementById('chart-bars').innerHTML=data.map((v,i)=>
+    `<div class="flex-1 flex flex-col items-center gap-1">
+      <div class="w-full rounded-t-lg ${v===mx?'bg-primary':'bg-primary/25'}" style="height:${Math.round(v/mx*72)}px"></div>
+      <span class="text-[9px] font-mono text-on-surface-variant">${DAYS[i]}</span>
+    </div>`).join('');
+}
+
+function setTab(t) {
+  document.getElementById('tab-w').className=`px-3 py-1 rounded-full text-xs font-semibold ${t==='w'?'bg-primary text-on-primary':'bg-surface-container text-on-surface-variant'}`;
+  document.getElementById('tab-m').className=`px-3 py-1 rounded-full text-xs font-semibold ${t==='m'?'bg-primary text-on-primary':'bg-surface-container text-on-surface-variant'}`;
+  renderChart(t==='w'?WD:MD);
+}
+
+async function loadDashboard() {
+  renderChart(WD);
+  const stats = await api('/stats');
+  if(stats) {
+    statsCache=stats;
+    document.getElementById('dash-stats').innerHTML=`
+      <div class="bg-surface-container-lowest border border-surface-variant p-lg rounded-xl shadow-sm">
+        <div class="flex justify-between items-start mb-2"><p class="text-sm text-on-surface-variant">Total Products</p><span class="material-symbols-outlined text-primary text-xl">inventory_2</span></div>
+        <p class="text-3xl font-bold text-on-surface font-mono">${stats.total_products.toLocaleString()}</p>
+        <p class="text-[10px] font-mono text-green-600 mt-2 flex items-center gap-1"><span class="material-symbols-outlined text-sm">trending_up</span>${stats.categories} categories</p>
+      </div>
+      <div class="bg-surface-container-lowest border border-surface-variant p-lg rounded-xl shadow-sm">
+        <div class="flex justify-between items-start mb-2"><p class="text-sm text-on-surface-variant">Inventory Value</p><span class="material-symbols-outlined text-primary text-xl">payments</span></div>
+        <p class="text-3xl font-bold text-on-surface font-mono">₹${(stats.total_value||0).toLocaleString('en-IN',{maximumFractionDigits:0})}</p>
+        <p class="text-[10px] font-mono text-on-surface-variant mt-2">Adjusted for current pricing</p>
+      </div>
+      <div class="bg-orange-50 border border-orange-200 p-lg rounded-xl shadow-sm">
+        <div class="flex justify-between items-start mb-2"><p class="text-sm text-orange-800">Low Stock</p><span class="material-symbols-outlined text-orange-600 text-xl">warning</span></div>
+        <p class="text-3xl font-bold text-orange-900 font-mono">${stats.low_stock}</p>
+        <p class="text-[10px] font-mono text-orange-700 mt-2 font-bold">Needs Restock Soon</p>
+      </div>
+      <div class="bg-error-container border border-outline-variant p-lg rounded-xl shadow-sm">
+        <div class="flex justify-between items-start mb-2"><p class="text-sm text-on-error-container">Out of Stock</p><span class="material-symbols-outlined text-error text-xl">error</span></div>
+        <p class="text-3xl font-bold text-on-error-container font-mono">${stats.out_of_stock}</p>
+        <p class="text-[10px] font-mono text-error mt-2 font-bold">CRITICAL: Review Required</p>
+      </div>`;
+  } else {
+    document.getElementById('dash-stats').innerHTML=`<div class="col-span-2 text-center py-6 text-on-surface-variant text-sm">⚠️ Start <code class="font-mono bg-surface-container px-2 py-0.5 rounded">python mobile_api.py</code> to load live data</div>`;
+  }
+  // Movements
+  const mv = await api('/movements?limit=4');
+  const list = document.getElementById('movements-list');
+  if(mv && mv.movements.length) {
+    const icons={'count_adjustment':'balance','received':'add_box','issued':'move_item','damaged':'broken_image','adjustment':'edit'};
+    const colors={'count_adjustment':'text-blue-700','received':'text-green-700','issued':'text-orange-700','damaged':'text-error','adjustment':'text-on-surface'};
+    list.innerHTML=mv.movements.map(m=>`
+      <div class="flex items-center justify-between p-md border border-surface-variant rounded-lg">
+        <div class="flex items-center gap-4">
+          <div class="w-10 h-10 rounded bg-surface-container flex items-center justify-center text-primary"><span class="material-symbols-outlined">${icons[m.type]||'swap_horiz'}</span></div>
+          <div><p class="font-semibold text-sm text-on-surface">${m.product_name||'Product #'+m.product_id}</p><p class="text-[10px] font-mono text-on-surface-variant">${m.reason||m.type}</p></div>
+        </div>
+        <div class="text-right">
+          <p class="font-semibold text-lg ${colors[m.type]||''} font-mono">${m.quantity>0?'+':''}${m.quantity}</p>
+          <span class="px-2 py-0.5 bg-surface-container text-on-surface-variant text-[9px] font-bold uppercase rounded">${m.type}</span>
+        </div>
+      </div>`).join('');
+  } else {
+    list.innerHTML='<p class="text-center text-sm text-on-surface-variant py-4">No recent movements</p>';
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// PRODUCTS
+// ═══════════════════════════════════════════════════
+let prodData=[];
+
+async function loadProducts() {
+  const q=document.getElementById('prod-search')?.value||'';
+  const statusParam = prodFilter!=='all'?`&status=${prodFilter}`:'';
+  const data = await api(`/products?q=${encodeURIComponent(q)}${statusParam}&limit=100`);
+  const grid=document.getElementById('prod-grid');
+  const empty=document.getElementById('prod-empty');
+  if(!data){ grid.innerHTML='<div class="text-center py-8 text-sm text-on-surface-variant">⚠️ API offline — run python mobile_api.py</div>'; return; }
+  prodData = data.products||[];
+  if(!prodData.length){ grid.innerHTML=''; empty.classList.remove('hidden'); empty.classList.add('flex'); return; }
+  empty.classList.add('hidden'); empty.classList.remove('flex');
+  const bMap={in:'bg-green-100 text-green-800',low:'bg-yellow-100 text-yellow-800',out:'bg-red-100 text-red-800'};
+  const lMap={in:'IN STOCK',low:'LOW STOCK',out:'OUT OF STOCK'};
+  grid.innerHTML=prodData.map(p=>{
+    const st=p._status||'in';
+    return `<div class="relative overflow-hidden rounded-xl bg-surface-container-lowest border border-outline/20 hover:shadow-lg transition-shadow group">
+      <div class="absolute inset-0 flex justify-end items-center px-4 bg-surface-container-high opacity-0 group-hover:opacity-100 transition-opacity z-10">
+        <div class="flex gap-2">
+          <button class="p-3 bg-secondary-container text-on-secondary-container rounded-full shadow-sm active:scale-95" onclick="openEditProductModal(${p.id})" title="Edit Product"><span class="material-symbols-outlined">edit</span></button>
+          <button class="p-3 bg-error-container text-on-error-container rounded-full shadow-sm active:scale-95" onclick="deleteProduct(${p.id}, '${(p.product_name||'').replace(/'/g, "\\'")}')" title="Delete Product"><span class="material-symbols-outlined">delete</span></button>
+        </div>
+      </div>
+      <div class="relative bg-surface-container-lowest p-4 flex gap-4 swipe-container group-hover:-translate-x-32">
+        <div class="w-24 h-24 flex-shrink-0 rounded-lg bg-surface-container flex items-center justify-center"><span class="material-symbols-outlined text-4xl text-on-surface-variant">inventory_2</span></div>
+        <div class="flex-1 flex flex-col justify-between min-w-0">
+          <div>
+            <div class="flex justify-between items-start gap-2">
+              <h3 class="font-semibold text-lg text-on-surface leading-tight">${p.product_name||'—'}</h3>
+              <span class="${bMap[st]} text-[9px] px-2 py-0.5 rounded-full font-mono whitespace-nowrap flex-shrink-0">${lMap[st]}</span>
+            </div>
+            <p class="text-[10px] font-mono text-outline mt-1">SKU: ${p.sku||'—'}</p>
+            <p class="text-sm text-on-surface-variant mt-0.5">${p.brand||p.category||'—'}</p>
+          </div>
+          <div class="mt-2">
+            <span class="text-[9px] text-outline uppercase font-bold tracking-wider">Current Stock</span>
+            <p class="font-semibold text-xl text-primary font-mono">${(p.current_stock||0).toLocaleString()} <small class="text-xs text-on-surface-variant font-sans">${p.unit||'pcs'}</small></p>
+          </div>
+        </div>
+      </div>
+    </div>`;}).join('');
+}
+
+function openAddProductModal() {
+  document.getElementById('pm-id').value = '';
+  document.getElementById('pm-title').textContent = 'Add New Product';
+  document.getElementById('pm-icon').textContent = 'add_box';
+  document.getElementById('pm-name').value = '';
+  document.getElementById('pm-sku').value = '';
+  document.getElementById('pm-barcode').value = '';
+  document.getElementById('pm-category').value = '';
+  document.getElementById('pm-brand').value = '';
+  document.getElementById('pm-stock').value = '0';
+  document.getElementById('pm-minstock').value = '5';
+  document.getElementById('pm-unit').value = 'pcs';
+  document.getElementById('pm-price').value = '';
+  document.getElementById('pm-purchase').value = '';
+  
+  const modal = document.getElementById('product-modal');
+  modal.classList.remove('pointer-events-none', 'opacity-0');
+  modal.classList.add('opacity-100');
+}
+
+async function openEditProductModal(productId) {
+  let p = prodData.find(item => item.id == productId);
+  if(!p) {
+    p = await api('/products/' + productId);
+  }
+  if(!p) {
+    showToast('Product details not found');
+    return;
+  }
+
+  document.getElementById('pm-id').value = p.id || '';
+  document.getElementById('pm-title').textContent = 'Edit Product #' + (p.id || '');
+  document.getElementById('pm-icon').textContent = 'edit_square';
+  document.getElementById('pm-name').value = p.product_name || '';
+  document.getElementById('pm-sku').value = p.sku || '';
+  document.getElementById('pm-barcode').value = p.barcode || '';
+  document.getElementById('pm-category').value = p.category || '';
+  document.getElementById('pm-brand').value = p.brand || p.supplier || '';
+  document.getElementById('pm-stock').value = p.current_stock ?? 0;
+  document.getElementById('pm-minstock').value = p.minimum_stock ?? 5;
+  document.getElementById('pm-unit').value = p.unit || 'pcs';
+  document.getElementById('pm-price').value = p.selling_price ?? '';
+  document.getElementById('pm-purchase').value = p.purchase_price ?? '';
+
+  const modal = document.getElementById('product-modal');
+  modal.classList.remove('pointer-events-none', 'opacity-0');
+  modal.classList.add('opacity-100');
+}
+
+function closeProductModal() {
+  const modal = document.getElementById('product-modal');
+  if(modal) {
+    modal.classList.add('pointer-events-none', 'opacity-0');
+    modal.classList.remove('opacity-100');
+  }
+}
+
+async function saveProductSubmit(e) {
+  e.preventDefault();
+  const id = document.getElementById('pm-id').value;
+  const btn = document.getElementById('pm-save-btn');
+  btn.disabled = true;
+  btn.style.opacity = '0.7';
+
+  const body = {
+    product_name: document.getElementById('pm-name').value.trim(),
+    sku: document.getElementById('pm-sku').value.trim(),
+    barcode: document.getElementById('pm-barcode').value.trim(),
+    category: document.getElementById('pm-category').value.trim(),
+    brand: document.getElementById('pm-brand').value.trim(),
+    current_stock: parseInt(document.getElementById('pm-stock').value) || 0,
+    minimum_stock: parseInt(document.getElementById('pm-minstock').value) || 0,
+    unit: document.getElementById('pm-unit').value.trim() || 'pcs',
+    selling_price: parseFloat(document.getElementById('pm-price').value) || 0.0,
+    purchase_price: parseFloat(document.getElementById('pm-purchase').value) || 0.0,
+    status: 'active'
+  };
+
+  let res = null;
+  if(id) {
+    res = await api('/products/' + id, { method: 'PUT', body: JSON.stringify(body) });
+  } else {
+    res = await api('/products', { method: 'POST', body: JSON.stringify(body) });
+  }
+
+  btn.disabled = false;
+  btn.style.opacity = '1';
+
+  if(res) {
+    showToast(id ? 'Product updated ✓' : 'Product created ✓');
+    closeProductModal();
+    loadProducts();
+    if(typeof loadDashboard === 'function') loadDashboard();
+  } else {
+    showToast('⚠️ Save failed — check API connection');
+  }
+}
+
+async function deleteProduct(productId, productName) {
+  if(!confirm(`Are you sure you want to delete "${productName}"?`)) return;
+  
+  showToast('Deleting product…');
+  const res = await api('/products/' + productId, { method: 'DELETE' });
+  if(res) {
+    showToast(`Deleted "${productName}" ✓`);
+    loadProducts();
+    if(typeof loadDashboard === 'function') loadDashboard();
+  } else {
+    showToast('⚠️ Delete failed — check API connection');
+  }
+}
+
+function debouncedSearch(){clearTimeout(searchTimer);searchTimer=setTimeout(loadProducts,350);}
+function setProdFilter(btn) {
+  prodFilter=btn.dataset.f;
+  document.querySelectorAll('.prod-chip').forEach(c=>{c.className='prod-chip whitespace-nowrap px-4 py-2 rounded-full border border-outline text-on-surface-variant font-semibold text-sm';});
+  btn.className='prod-chip whitespace-nowrap px-4 py-2 rounded-full bg-primary text-on-primary font-semibold text-sm shadow-sm';
+  loadProducts();
+}
+function setProdFilterByName(f) {
+  prodFilter=f;
+  document.querySelectorAll('.prod-chip').forEach(c=>{c.className='prod-chip whitespace-nowrap px-4 py-2 rounded-full border border-outline text-on-surface-variant font-semibold text-sm';const b=c.dataset.f===f?c:null;if(b)b.className='prod-chip whitespace-nowrap px-4 py-2 rounded-full bg-primary text-on-primary font-semibold text-sm shadow-sm';});
+  loadProducts();
+}
+function focusSearch(){
+  if(cur==='sc-products'){
+    document.getElementById('prod-search')?.focus();
+  } else {
+    showToast('Navigate to Products to search');
+  }
+}
+
+async function importData(){
+  showToast('Tap the ＋ button to add products, or use the Gradio app for Excel import');
+}
+
+async function exportData(){
+  try {
+    showToast('Preparing export…');
+    const data = await api('/export');
+    if(!data) { showToast('⚠️ Export failed — API offline'); return; }
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'inventory_export_' + new Date().toISOString().slice(0,10) + '.json';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(url); document.body.removeChild(a); }, 500);
+    showToast(`Exported ${data.total} products ✓`);
+  } catch(e) {
+    console.error('Export error:', e);
+    showToast('⚠️ Export error: ' + e.message);
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// CATEGORIES
+// ═══════════════════════════════════════════════════
+const CAT_ICONS={'Electronics':'devices','Tools':'construction','Industrial Tools':'construction','Office Supplies':'description','Office':'description','Safety':'engineering','Safety Gear':'engineering','Raw Materials':'layers','Logistics':'local_shipping','default':'category'};
+const CAT_COLORS={'Electronics':'bg-primary-fixed text-primary','Tools':'bg-secondary-container text-secondary','Industrial Tools':'bg-secondary-container text-secondary','Office Supplies':'bg-surface-variant text-on-surface-variant','Office':'bg-surface-variant text-on-surface-variant','Safety':'bg-primary-fixed text-primary','Safety Gear':'bg-primary-fixed text-primary','Raw Materials':'bg-secondary-fixed text-on-secondary-fixed-variant','default':'bg-surface-container text-on-surface-variant'};
+
+async function loadCategories() {
+  const data = await api('/categories');
+  const stats = await api('/stats');
+  const el=document.getElementById('cat-list');
+  if(!data){ el.innerHTML='<p class="text-center text-sm text-on-surface-variant py-4">⚠️ API offline</p>'; return; }
+  const cats=data||[];
+  el.innerHTML=cats.map(c=>{
+    const icon=CAT_ICONS[c.name]||CAT_ICONS.default;
+    const col=CAT_COLORS[c.name]||CAT_COLORS.default;
+    return `<div class="category-card bg-surface-container-lowest border border-surface-variant rounded-xl p-md flex items-start gap-md shadow-sm hover:shadow-md cursor-pointer" onclick="showToast('${c.name}: ${c.count} products')">
+      <div class="w-12 h-12 rounded-lg ${col.split(' ')[0]} flex items-center justify-center"><span class="material-symbols-outlined ${col.split(' ')[1]} text-[28px]">${icon}</span></div>
+      <div class="flex-1"><h3 class="font-semibold text-xl text-on-surface">${c.name}</h3><div class="flex items-center gap-xs mt-1"><span class="material-symbols-outlined text-on-surface-variant text-[16px]">inventory_2</span><p class="text-[10px] font-mono text-on-surface-variant uppercase">${c.count} Products</p></div></div>
+    </div>`;
+  }).join('')||'<p class="text-center text-sm text-on-surface-variant py-4">No categories found — add products first</p>';
+  if(stats) document.getElementById('low-alert-text').textContent=`${stats.low_stock} items require replenishment. ${stats.out_of_stock} items are out of stock.`;
+}
+
+// ═══════════════════════════════════════════════════
+// COUNT INFO → create session
+// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
+// COUNT INFO → create session
+// ═══════════════════════════════════════════════════
+async function submitCountInfo() {
+  const docnum=document.getElementById('ci-docnum').value.trim();
+  const inspector=document.getElementById('ci-inspector').value.trim();
+  const date=document.getElementById('ci-date').value;
+  const location=document.getElementById('ci-location').value.trim();
+  if(!inspector){showToast('Please enter inspector name');return;}
+  const btn=document.getElementById('ci-ok');
+  btn.textContent='Creating…'; btn.disabled=true;
+  const body={name:docnum||'Count-'+date,doc_num:docnum,inspector,count_date:date,location};
+  const session=await api('/counts',{method:'POST',body:JSON.stringify(body)});
+  btn.textContent='OK'; btn.disabled=false;
+  
+  const labelDoc = docnum || (session ? 'PI'+session.id : 'PI20260730003');
+  document.getElementById('cnt-doc-label').textContent = '#' + labelDoc;
+  document.getElementById('cnt-inspector-label').textContent = 'Inspector: ' + inspector;
+
+  if(session){
+    sessionId=session.id;
+    queue=[];qIdx=-1;
+    renderQueue();
+    syncCard();
+    showToast('Session created! ID: '+session.id);
+    go('sc-counting','Start Counting',true);
+    setTimeout(startEmbeddedCamera, 300);
+  } else {
+    showToast('⚠️ Could not create session — API offline?');
+    sessionId=null;
+    queue=[];qIdx=-1;
+    renderQueue();syncCard();
+    go('sc-counting','Start Counting',true);
+    setTimeout(startEmbeddedCamera, 300);
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// EMBEDDED CAMERA READER
+// ═══════════════════════════════════════════════════
+let embedHtml5Qrcode = null;
+async function startEmbeddedCamera() {
+  const container = document.getElementById('embed-camera-reader');
+  if(!container) return;
+  if(typeof Html5Qrcode === 'undefined') return;
+  try {
+    if(!embedHtml5Qrcode) {
+      embedHtml5Qrcode = new Html5Qrcode("embed-camera-reader");
+    }
+    const config = { fps: 15, qrbox: { width: 200, height: 140 } };
+    await embedHtml5Qrcode.start(
+      { facingMode: "environment" },
+      config,
+      onBarcodeScanned,
+      () => {}
+    );
+  } catch(e) {
+    console.warn('Embedded camera start info:', e);
+  }
+}
+
+function focusBcInput() {
+  document.getElementById('bc-input')?.focus();
+}
+
+// ═══════════════════════════════════════════════════
+// STOCK COUNTING
+// ═══════════════════════════════════════════════════
+async function addItem() {
+  const inp=document.getElementById('bc-input');
+  const val=inp.value.trim();
+  if(!val){showToast('Enter a barcode or SKU');return;}
+  // Try to resolve via API
+  let product=null;
+  const result=await api(`/products/lookup?sku=${encodeURIComponent(val)}&barcode=${encodeURIComponent(val)}`);
+  if(result&&result.id) product=result;
+  else product={id:0,product_name:val,sku:val,barcode:val,brand:'',category:'',current_stock:0};
+  // Add to session on API
+  if(sessionId){
+    const row=await api(`/counts/${sessionId}/items`,{method:'POST',body:JSON.stringify({
+      product_id:product.id||0,product_name:product.product_name,sku:product.sku,
+      barcode:product.barcode||'',expected_quantity:product.current_stock||0,counted_quantity:0
+    })});
+    if(row) product._item_id=row.item_id;
+  }
+  queue.push({...product,counted:0,_status:product._status||'in'});
+  qIdx=queue.length-1;
+  inp.value='';
+  renderQueue(); syncCard();
+  showToast('Added: '+(product.product_name||val));
+}
+
+function adjust(d){
+  const newVal=Math.max(0,(queue[qIdx]?.counted||0)+d);
+  if(qIdx>=0) queue[qIdx].counted=newVal;
+  document.getElementById('cnt-counted').textContent=newVal;
+  document.getElementById('cnt-qty-inp').value=newVal;
+  const el=document.getElementById('cnt-counted');
+  el.style.transform='scale(1.15)';setTimeout(()=>el.style.transform='scale(1)',100);
+  renderQueue();
+  if(sessionId && queue[qIdx]?._item_id){
+    api(`/counts/${sessionId}/items/${queue[qIdx]._item_id}`,{method:'PUT',body:JSON.stringify({counted_quantity:newVal,status:'pending'})});
+  }
+}
+
+function syncQty(inp){
+  const v=Math.max(0,parseInt(inp.value)||0);
+  if(qIdx>=0){queue[qIdx].counted=v;}
+  document.getElementById('cnt-counted').textContent=v;
+  if(sessionId && queue[qIdx]?._item_id){
+    api(`/counts/${sessionId}/items/${queue[qIdx]._item_id}`,{method:'PUT',body:JSON.stringify({counted_quantity:v,status:'pending'})});
+  }
+  renderQueue();
+}
+
+function syncCard(){
+  if(qIdx<0||qIdx>=queue.length){
+    document.getElementById('cnt-prod-name').textContent='Scan a barcode to begin';
+    document.getElementById('cnt-prod-info').textContent='Align barcode with red laser line above';
+    document.getElementById('cnt-expected').textContent='—';
+    document.getElementById('cnt-counted').textContent='0';
+    document.getElementById('cnt-qty-inp').value='0';
+    return;
+  }
+  const item=queue[qIdx];
+  document.getElementById('cnt-prod-name').textContent=item.product_name||item.sku;
+  document.getElementById('cnt-prod-info').textContent=`SKU: ${item.sku||'—'} | ${item.brand||item.category||'—'}`;
+  document.getElementById('cnt-expected').textContent=item.current_stock||0;
+  document.getElementById('cnt-counted').textContent=item.counted||0;
+  document.getElementById('cnt-qty-inp').value=item.counted||0;
+}
+
+function queueNav(d){
+  if(d===-1&&qIdx>0) qIdx--;
+  else if(d===1&&qIdx<queue.length-1) qIdx++;
+  else if(d===0){showToast('Skipped');if(qIdx<queue.length-1)qIdx++;}
+  syncCard();
+}
+
+function renderQueue(){
+  const el=document.getElementById('queue-list');
+  document.getElementById('queue-count').textContent=queue.length;
+  
+  const totalScanned = queue.reduce((sum, i) => sum + (i.counted||0), 0);
+  const totalExpected = queue.reduce((sum, i) => sum + (i.current_stock||0), 0);
+  document.getElementById('cnt-total-scanned').textContent = totalScanned;
+  document.getElementById('cnt-total-expected').textContent = totalExpected;
+
+  if(!queue.length){el.innerHTML='<div class="text-center py-8 text-on-surface-variant text-sm">No items counted yet</div>';return;}
+  el.innerHTML=queue.map((item,i)=>`
+    <div class="flex items-center justify-between p-md border ${i===qIdx?'border-primary/50 bg-primary/5':'border-surface-variant/30 bg-surface-container-low'} rounded-lg cursor-pointer ${item.counted===item.current_stock&&item.current_stock>0?'count-active':''}" onclick="jumpTo(${i})">
+      <div class="flex items-center gap-md">
+        <div class="w-12 h-12 bg-surface-container-lowest rounded border border-surface-variant flex items-center justify-center"><span class="material-symbols-outlined text-secondary">inventory_2</span></div>
+        <div><p class="font-semibold text-sm">${item.product_name||item.sku}</p><p class="text-[10px] font-mono text-secondary">SKU: ${item.sku||'—'}</p></div>
+      </div>
+      <div class="text-right flex-shrink-0 ml-2">
+        <p class="font-semibold text-lg font-mono">${item.counted}<span class="text-[10px] text-secondary"> / ${item.current_stock||0}</span></p>
+        ${item.counted===(item.current_stock||0)&&item.counted>0?'<span class="text-[9px] bg-green-100 text-green-800 px-1.5 py-0.5 rounded uppercase font-bold">✓ Match</span>':''}
+      </div>
+    </div>`).join('');
+}
+
+function jumpTo(i){qIdx=i;syncCard();}
+
+async function finishCounting(){
+  let adjustments=[];
+  if(sessionId){
+    showToast('Saving and adjusting stock…');
+    const result=await api(`/counts/${sessionId}/finish`,{method:'POST'});
+    if(result) adjustments=result.adjustments||[];
+  }
+  buildResults(adjustments);
+  go('sc-result','View Result');
+  showToast('Count completed! ✓');
+  loadSessions();
+}
+
+// ═══════════════════════════════════════════════════
+// VIEW RESULT
+// ═══════════════════════════════════════════════════
+function buildResults(adjustments=[]) {
+  const total=queue.length;
+  const match=queue.filter(i=>i.counted===(i.current_stock||0)).length;
+  const variance=total-match;
+  document.getElementById('res-tot').textContent=total;
+  document.getElementById('res-match').textContent=match;
+  document.getElementById('res-var').textContent=variance;
+  const el=document.getElementById('result-list');
+  const rd=document.getElementById('result-detail');
+  if(!total){rd.classList.add('hidden');return;}
+  rd.classList.remove('hidden');
+  el.innerHTML=queue.map(item=>{
+    const diff=item.counted-(item.current_stock||0);
+    const col=diff===0?'text-green-700':diff>0?'text-orange-700':'text-error';
+    const bg=diff===0?'bg-green-100':diff>0?'bg-orange-100':'bg-error-container';
+    const lbl=diff===0?'MATCH':diff>0?`+${diff} OVER`:`${diff} SHORT`;
+    return `<div class="bg-surface-container-lowest border border-surface-variant rounded-xl p-md mb-gutter shadow-sm">
+      <div class="flex justify-between items-start mb-3">
+        <div><p class="font-semibold text-lg text-on-surface">${item.product_name||item.sku}</p><p class="text-[10px] font-mono text-on-surface-variant mt-0.5">${item.sku||'—'}</p></div>
+        <span class="${bg} ${col} px-2 py-1 rounded-full text-[10px] font-bold whitespace-nowrap ml-2">${lbl}</span>
+      </div>
+      <div class="grid grid-cols-3 gap-2 text-center">
+        <div class="bg-surface-container rounded-lg p-sm"><p class="text-3xl font-bold text-secondary font-mono">${item.current_stock||0}</p><p class="text-[9px] font-mono text-secondary mt-1">System</p></div>
+        <div class="bg-surface-container rounded-lg p-sm"><p class="text-3xl font-bold text-primary font-mono">${item.counted}</p><p class="text-[9px] font-mono text-primary mt-1">Counted</p></div>
+        <div class="bg-surface-container rounded-lg p-sm"><p class="text-3xl font-bold ${col} font-mono">${diff>0?'+':''}${diff}</p><p class="text-[9px] font-mono ${col} mt-1">Variance</p></div>
+      </div>
+    </div>`;}).join('');
+}
+
+function formatDateStr(dStr) {
+  if(!dStr) return '—';
+  const parts = dStr.split('-');
+  if(parts.length === 3) {
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const y = parts[0], m = parseInt(parts[1])-1, d = parts[2];
+    if(months[m]) return `${d} ${months[m]} ${y}`;
+  }
+  return dStr;
+}
+
+async function viewSessionDetail(id) {
+  const session = await api(`/counts/${id}`);
+  if(!session) return;
+  const items = session.items || [];
+  queue = items.map(i => ({
+    id: i.product_id,
+    product_name: i.product_name || i.sku,
+    sku: i.sku,
+    current_stock: i.expected_quantity,
+    counted: i.counted_quantity
+  }));
+  buildResults();
+  document.getElementById('result-detail')?.scrollIntoView({behavior:'smooth'});
+  showToast(`Loaded Session #${session.doc_num || session.id}`);
+}
+
+async function loadSessions(){
+  const data=await api('/counts?limit=20&status=');
+  const el=document.getElementById('sessions-list');
+  if(!data||!data.sessions||!data.sessions.length){el.innerHTML='<p class="text-center text-sm text-on-surface-variant py-6">No sessions yet — start a count</p>';return;}
+  const colorMap={active:'bg-blue-100 text-blue-800',completed:'bg-green-100 text-green-800',paused:'bg-yellow-100 text-yellow-800',cancelled:'bg-red-100 text-red-800'};
+  el.innerHTML=data.sessions.slice(0,10).map(s=>`
+    <div class="bg-surface-container-lowest border border-surface-variant rounded-xl p-md mb-gutter shadow-sm cursor-pointer active:bg-surface-container-high" onclick="viewSessionDetail(${s.id})">
+      <div class="flex justify-between items-start">
+        <div><p class="font-semibold text-base text-on-surface">${s.name||'Session #'+s.id}</p>
+        <p class="text-[10px] font-mono text-on-surface-variant mt-0.5">Doc: ${s.doc_num||'—'} · ${s.inspector||'—'} · ${(s.items||[]).length} items</p></div>
+        <span class="${colorMap[s.status]||'bg-surface-container text-on-surface-variant'} text-[9px] px-2 py-0.5 rounded uppercase font-bold">${s.status}</span>
+      </div>
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════════════════
+// SETTINGS
+// ═══════════════════════════════════════════════════
+async function loadSettings(){
+  const s=await api('/settings');
+  if(!s)return;
+  if(s.show_selling_price!==undefined) document.getElementById('s-show-price').checked=s.show_selling_price;
+  if(s.use_purchase_price!==undefined) document.getElementById('s-use-cost').checked=s.use_purchase_price;
+  document.getElementById('s-qty-dec').textContent=`Number of decimal digits on quantity (${s.qty_decimal??0})`;
+  document.getElementById('s-price-dec').textContent=`Number of decimal digits on selling price (${s.price_decimal??2})`;
+}
+
+async function saveSettings(){
+  const body={show_selling_price:document.getElementById('s-show-price').checked,use_purchase_price:document.getElementById('s-use-cost').checked};
+  const r=await api('/settings',{method:'PUT',body:JSON.stringify(body)});
+  showToast(r?'Settings saved ✓':'⚠️ API offline — settings not saved');
+}
+
+async function testConn(){
+  const el=document.getElementById('s-api-status');
+  el.textContent='Testing…';
+  const r=await api('/stats');
+  el.textContent=r?'✅ localhost:8765 — Connected':'❌ localhost:8765 — Offline (run python mobile_api.py)';
+}
+async function testGradio(){
+  const el=document.getElementById('s-gradio-status');
+  el.textContent='Testing…';
+  // Try common Gradio ports: 7860, 7861, 7862
+  const ports = [7860, 7861, 7862];
+  for(const port of ports) {
+    try {
+      const r = await fetch(`http://localhost:${port}/`, {signal: AbortSignal.timeout(2000)});
+      if(r.ok || r.status === 200 || r.status === 403) {
+        el.textContent=`✅ localhost:${port} — Gradio Connected`;
+        document.getElementById('s-gradio-status').setAttribute('data-port', port);
+        return;
+      }
+    } catch(e) { /* try next port */ }
+  }
+  el.textContent='❌ Gradio offline on ports 7860-7862 (run python app.py)';
+}
+
+// ═══════════════════════════════════════════════════
+// MISC
+// ═══════════════════════════════════════════════════
+function toggleDrawer(open) {
+  const overlay = document.getElementById('nav-drawer-overlay');
+  const drawer = document.getElementById('nav-drawer');
+  if(!overlay || !drawer) return;
+  if(open) {
+    overlay.classList.remove('pointer-events-none','opacity-0');
+    overlay.classList.add('opacity-100');
+    drawer.classList.remove('-translate-x-full');
+    drawer.classList.add('translate-x-0');
+  } else {
+    overlay.classList.add('pointer-events-none','opacity-0');
+    overlay.classList.remove('opacity-100');
+    drawer.classList.add('-translate-x-full');
+    drawer.classList.remove('translate-x-0');
+  }
+}
+
+function showMenuOptions(){
+  toggleDrawer(true);
+}
+
+function drawerNav(screenId, title, push){
+  toggleDrawer(false);
+  setTimeout(() => go(screenId, title, push), 150);
+}
+function exitApp(){if(confirm('Exit InventoryFlow?')){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('sc-home').classList.add('active');stack=[];cur='sc-home';setHeader(META['sc-home']);document.getElementById('bot-nav').classList.add('hidden');}}
+
+// ═══════════════════════════════════════════════════
+// CAMERA BARCODE SCANNER
+// ═══════════════════════════════════════════════════
+let html5QrcodeScanner = null;
+let currentFacingMode = "environment";
+let isTorchOn = false;
+
+async function openCameraScanner() {
+  const modal = document.getElementById('camera-scanner-modal');
+  if(!modal) return;
+  modal.classList.remove('pointer-events-none', 'opacity-0');
+  modal.classList.add('opacity-100');
+
+  if(typeof Html5Qrcode === 'undefined') {
+    showToast('Loading barcode scanner library...');
+    await new Promise(r => setTimeout(r, 600));
+  }
+
+  try {
+    if(!html5QrcodeScanner) {
+      html5QrcodeScanner = new Html5Qrcode("camera-reader");
+    }
+    const config = { fps: 15, qrbox: { width: 240, height: 240 } };
+    await html5QrcodeScanner.start(
+      { facingMode: currentFacingMode },
+      config,
+      onBarcodeScanned,
+      onScanError
+    );
+    showToast('Camera active — point at barcode');
+  } catch (err) {
+    console.warn('Camera start error:', err);
+    showToast('Camera access unavailable — enter barcode manually');
+  }
+}
+
+function playBeep(){
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = 1000;
+    gain.gain.value = 0.15;
+    osc.start();
+    osc.stop(ctx.currentTime + 0.12);
+  } catch(e){}
+}
+
+function onBarcodeScanned(decodedText) {
+  playBeep();
+  console.log('[InventoryFlow] Barcode scanned:', decodedText);
+
+  // Close the full-screen modal scanner (if it's open)
+  const modal = document.getElementById('camera-scanner-modal');
+  if(modal && !modal.classList.contains('pointer-events-none')) {
+    closeCameraScanner();
+  }
+  // Always update the barcode input and trigger addItem
+  const input = document.getElementById('bc-input');
+  if(input) {
+    input.value = decodedText;
+    addItem();
+    showToast(`Scanned: ${decodedText} ✓`);
+  }
+}
+
+function onScanError(err) {
+  // Continuous scanning frame ignore
+}
+
+async function closeCameraScanner() {
+  const modal = document.getElementById('camera-scanner-modal');
+  if(modal) {
+    modal.classList.add('pointer-events-none', 'opacity-0');
+    modal.classList.remove('opacity-100');
+  }
+  if(html5QrcodeScanner) {
+    try {
+      await html5QrcodeScanner.stop();
+    } catch(e){}
+  }
+}
+
+async function switchCameraFacing() {
+  currentFacingMode = (currentFacingMode === "environment") ? "user" : "environment";
+  if(html5QrcodeScanner) {
+    try {
+      await html5QrcodeScanner.stop();
+    } catch(e){}
+    openCameraScanner();
+  }
+}
+
+async function toggleCameraTorch() {
+  if(!html5QrcodeScanner) return;
+  try {
+    isTorchOn = !isTorchOn;
+    await html5QrcodeScanner.applyVideoConstraints({
+      advanced: [{ torch: isTorchOn }]
+    });
+    document.getElementById('torch-lbl').textContent = isTorchOn ? 'Torch On' : 'Torch Off';
+  } catch(e) {
+    showToast('Torch not supported on this device');
+  }
+}
+
+let toastT;
+function showToast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.classList.remove('hidden');
+  clearTimeout(toastT);toastT=setTimeout(()=>el.classList.add('hidden'),3000);
+}
+
+// ═══════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('ci-date').value=new Date().toISOString().split('T')[0];
+  const doc='PI'+new Date().toISOString().replace(/[-T:.Z]/g,'').slice(0,12);
+  document.getElementById('ci-docnum').value=doc;
+  setHeader(META['sc-home']);
+  // Swipe back
+  let tx=0;
+  document.addEventListener('touchstart',e=>{tx=e.touches[0].clientX;},{passive:true});
+  document.addEventListener('touchend',e=>{if(e.changedTouches[0].clientX-tx>90&&tx<60&&stack.length)goBack();},{passive:true});
+  // Hardware back
+  history.pushState(null,'');
+  window.addEventListener('popstate',()=>{history.pushState(null,'');if(stack.length)goBack();});
+});
+</script>
+</body>
+</html>

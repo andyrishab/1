@@ -1,0 +1,340 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>InventoryFlow - Product Master</title>
+<!-- Google Fonts: Inter & JetBrains Mono -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet">
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-error": "#ffffff",
+                    "surface-dim": "#dcd9d9",
+                    "primary": "#91000a",
+                    "surface-variant": "#e5e2e1",
+                    "on-tertiary-container": "#d6d6d6",
+                    "inverse-on-surface": "#f3f0ef",
+                    "secondary-container": "#dfe0e0",
+                    "surface-bright": "#fcf9f8",
+                    "surface-container-low": "#f6f3f2",
+                    "on-primary": "#ffffff",
+                    "on-surface-variant": "#5b403d",
+                    "error": "#ba1a1a",
+                    "surface-container-high": "#eae7e7",
+                    "on-secondary": "#ffffff",
+                    "tertiary-fixed-dim": "#c6c6c7",
+                    "surface-container-highest": "#e5e2e1",
+                    "tertiary": "#444646",
+                    "primary-fixed-dim": "#ffb4ab",
+                    "secondary": "#5d5f5f",
+                    "tertiary-fixed": "#e2e2e2",
+                    "tertiary-container": "#5c5d5d",
+                    "on-background": "#1b1c1c",
+                    "surface": "#fcf9f8",
+                    "on-surface": "#1b1c1c",
+                    "on-secondary-container": "#616363",
+                    "on-tertiary-fixed": "#1a1c1c",
+                    "secondary-fixed-dim": "#c6c6c7",
+                    "on-error-container": "#93000a",
+                    "on-tertiary": "#ffffff",
+                    "inverse-primary": "#ffb4ab",
+                    "secondary-fixed": "#e2e2e2",
+                    "inverse-surface": "#303030",
+                    "surface-container": "#f0eded",
+                    "on-tertiary-fixed-variant": "#454747",
+                    "surface-tint": "#b91d1d",
+                    "primary-fixed": "#ffdad6",
+                    "primary-container": "#b71c1c",
+                    "error-container": "#ffdad6",
+                    "on-secondary-fixed": "#1a1c1c",
+                    "on-primary-fixed": "#410002",
+                    "outline-variant": "#e4beb9",
+                    "outline": "#8f706c",
+                    "on-secondary-fixed-variant": "#454747",
+                    "surface-container-lowest": "#ffffff",
+                    "on-primary-fixed-variant": "#93000b",
+                    "background": "#fcf9f8",
+                    "on-primary-container": "#ffcac4"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "edge_margin": "16px",
+                    "xl": "32px",
+                    "base": "8px",
+                    "md": "16px",
+                    "lg": "24px",
+                    "sm": "8px",
+                    "xs": "4px",
+                    "gutter": "12px"
+            },
+            "fontFamily": {
+                    "headline-md": ["Inter"],
+                    "button": ["Inter"],
+                    "headline-sm": ["Inter"],
+                    "body-md": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "label-md": ["JetBrains Mono"]
+            },
+            "fontSize": {
+                    "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "button": ["14px", {"lineHeight": "20px", "letterSpacing": "0.1px", "fontWeight": "600"}],
+                    "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            line-height: 1;
+            text-transform: none;
+            letter-spacing: normal;
+            word-wrap: normal;
+            white-space: nowrap;
+            direction: ltr;
+        }
+        .swipe-container {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen pb-24">
+<!-- Top AppBar Component -->
+<header class="sticky top-0 z-40 flex justify-between items-center w-full px-edge_margin h-16 bg-surface border-b border-surface-variant">
+<div class="flex items-center gap-4">
+<button class="p-2 rounded-full hover:bg-surface-container-low transition-colors active:scale-95 duration-100">
+<span class="material-symbols-outlined text-primary">menu</span>
+</button>
+<h1 class="font-headline-md text-headline-md text-primary">InventoryFlow</h1>
+</div>
+<div class="flex items-center gap-2">
+<!-- Import/Export buttons as requested -->
+<button class="flex items-center gap-1 px-3 py-1.5 rounded-full hover:bg-surface-container-low text-on-surface-variant transition-colors">
+<span class="material-symbols-outlined text-[20px]">upload</span>
+<span class="font-button text-button hidden sm:inline">Import</span>
+</button>
+<button class="flex items-center gap-1 px-3 py-1.5 rounded-full hover:bg-surface-container-low text-on-surface-variant transition-colors">
+<span class="material-symbols-outlined text-[20px]">download</span>
+<span class="font-button text-button hidden sm:inline">Export</span>
+</button>
+<button class="p-2 rounded-full hover:bg-surface-container-low transition-colors active:scale-95 duration-100">
+<span class="material-symbols-outlined text-primary">search</span>
+</button>
+</div>
+</header>
+<main class="max-w-4xl mx-auto p-edge_margin space-y-lg">
+<!-- Search & Filter Area -->
+<section class="space-y-md">
+<!-- Search Bar -->
+<div class="relative group">
+<div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-outline">search</span>
+</div>
+<input class="block w-full pl-11 pr-4 py-3 bg-surface-container-lowest border border-outline rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all font-body-lg text-body-lg placeholder:text-outline/60" placeholder="Search product name or SKU..." type="text">
+</div>
+<!-- Filter Chips -->
+<div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+<button class="whitespace-nowrap px-4 py-2 rounded-full bg-primary text-on-primary font-button text-button shadow-sm">All</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full border border-outline text-on-surface-variant hover:bg-surface-container-low font-button text-button transition-colors">Electronics</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full border border-outline text-on-surface-variant hover:bg-surface-container-low font-button text-button transition-colors">Apparel</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full border border-outline text-on-surface-variant hover:bg-surface-container-low font-button text-button transition-colors">Home &amp; Kitchen</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full border border-outline text-on-surface-variant hover:bg-surface-container-low font-button text-button transition-colors">Warehouse B</button>
+</div>
+</section>
+<!-- Product Grid (Bento/Card Layout) -->
+<section class="grid grid-cols-1 md:grid-cols-2 gap-gutter">
+<!-- Product Card 1 -->
+<div class="relative overflow-hidden rounded-xl bg-surface-container-lowest border border-outline/20 hover:shadow-lg transition-shadow group">
+<!-- Swipe Background (Simulated) -->
+<div class="absolute inset-0 flex justify-end items-center px-4 bg-surface-container-high opacity-0 group-hover:opacity-100 transition-opacity">
+<div class="flex gap-2">
+<button class="p-3 bg-secondary-container text-on-secondary-container rounded-full shadow-sm hover:scale-105 active:scale-95 transition-transform">
+<span class="material-symbols-outlined">edit</span>
+</button>
+<button class="p-3 bg-error-container text-on-error-container rounded-full shadow-sm hover:scale-105 active:scale-95 transition-transform">
+<span class="material-symbols-outlined">delete</span>
+</button>
+</div>
+</div>
+<!-- Card Content -->
+<div class="relative bg-surface-container-lowest p-4 flex gap-4 swipe-container group-hover:-translate-x-32 md:group-hover:translate-x-0">
+<div class="w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="A clean, studio-lit professional shot of a high-end ergonomic wireless keyboard on a white surface. The image follows a minimalist light-mode aesthetic with soft shadows and a neutral gray background. Red accent lighting subtly highlights the product edges, maintaining a modern enterprise tech feel consistent with high-stakes inventory management software." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD8cnLDYNkt5IU7dd9OY0Sw3LZs3dwicb37ADnDGz7G-mpWL8odFUCnCVa4RJ7cajxyP8P9QoNH3KU-ahmAmdBiskb7KjmEY01FqJVZw8YX3i0ALxgZNBg71hN_CimhRAVKdYaZ86ZOvQ8RTPZLiIF0SUSK9flRjCyEsnupDOu2F3K-HLuBiz7OrOuUbU1S0YOqvtKzwl6dksIrytxmUxfZh9LMwVb7_XaGpqBlllaaIpkB86ZaDGZo">
+</div>
+<div class="flex-1 flex flex-col justify-between">
+<div>
+<div class="flex justify-between items-start">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">ErgoPro X-900</h3>
+<span class="bg-green-100 text-green-800 text-[10px] px-2 py-0.5 rounded-full font-label-md">IN STOCK</span>
+</div>
+<p class="font-label-md text-label-md text-outline">SKU: EPX-900-BLK</p>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Brand: Logitech</p>
+</div>
+<div class="flex justify-between items-end mt-2">
+<div class="flex flex-col">
+<span class="text-[10px] text-outline uppercase font-bold tracking-wider">Current Stock</span>
+<span class="font-headline-sm text-headline-sm text-primary">1,240 <small class="text-xs text-on-surface-variant">units</small></span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Product Card 2 -->
+<div class="relative overflow-hidden rounded-xl bg-surface-container-lowest border border-outline/20 hover:shadow-lg transition-shadow group">
+<div class="absolute inset-0 flex justify-end items-center px-4 bg-surface-container-high opacity-0 group-hover:opacity-100 transition-opacity">
+<div class="flex gap-2">
+<button class="p-3 bg-secondary-container text-on-secondary-container rounded-full shadow-sm">
+<span class="material-symbols-outlined">edit</span>
+</button>
+<button class="p-3 bg-error-container text-on-error-container rounded-full shadow-sm">
+<span class="material-symbols-outlined">delete</span>
+</button>
+</div>
+</div>
+<div class="relative bg-surface-container-lowest p-4 flex gap-4 swipe-container">
+<div class="w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="A detailed macro photograph of industrial grade network cables and fiber optic components arranged neatly on a white table. The lighting is crisp and even, mirroring an enterprise warehouse environment. A single deep red cable stands out against the sea of gray and white, creating a strong focal point that aligns with the Redline primary color of the UI design system." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCUJGy5V292A5N3ABFPz_rIqqOW76dOjqQWPEr7Ektp94V_8maf61yNxN4lgVbnKJekCCHessi7H5P5ot4gt77GPXTx1-1jTLZ_odOaheAI_t4mIWgjgGknXEQKFO45qBbUArttRMhmMFIhYIbBW2As34qnl3ZcTJQLwPIRHeuw-Ks7jdJDtuLy3LsgP_cJaWwNYIkqvZdr69VMgUl8I2051tUtgTN6MvPfflMMeN11pGFZHk4v1tQ-">
+</div>
+<div class="flex-1 flex flex-col justify-between">
+<div>
+<div class="flex justify-between items-start">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Fiber-Link 10G</h3>
+<span class="bg-yellow-100 text-yellow-800 text-[10px] px-2 py-0.5 rounded-full font-label-md">LOW STOCK</span>
+</div>
+<p class="font-label-md text-label-md text-outline">SKU: FL-10G-2M</p>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Brand: Cisco</p>
+</div>
+<div class="flex justify-between items-end mt-2">
+<div class="flex flex-col">
+<span class="text-[10px] text-outline uppercase font-bold tracking-wider">Current Stock</span>
+<span class="font-headline-sm text-headline-sm text-primary">42 <small class="text-xs text-on-surface-variant">units</small></span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Product Card 3 -->
+<div class="relative overflow-hidden rounded-xl bg-surface-container-lowest border border-outline/20 hover:shadow-lg transition-shadow group">
+<div class="relative bg-surface-container-lowest p-4 flex gap-4 swipe-container">
+<div class="w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="A professional studio photo of a sleek, matte black handheld industrial barcode scanner resting on its charging dock. The background is a clean, minimalist white-dominant office setting with cool, daylight lighting. The scanner has small red indicator lights, perfectly matching the primary brand color 'Redline'. The atmosphere is one of high-tech efficiency and systematic organization." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAwJ-1d07cKpX0ZQq7OXWgspbKgY1BAcjWlJRQ_FZcxjJ6n6nH4oEFIK1IyL4IazqljSc-lBT2dw6TW_7Wz7DPT17FSGHYUEbdXmc4HKKd5XE9J8MofOt9jBXd4ob8n003aQVgJCVSag1Gl98VCvuOo0S3_lW0-qIcfhu68GkKeLVclzcGCd2-c1JXqnsjaWJzlcCyaIQU4TKWPpzasW60lJ5L0hMaqxuslx7N5Th105ncGLuS_QfwL">
+</div>
+<div class="flex-1 flex flex-col justify-between">
+<div>
+<div class="flex justify-between items-start">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">ScanMaster Z1</h3>
+<span class="bg-green-100 text-green-800 text-[10px] px-2 py-0.5 rounded-full font-label-md">IN STOCK</span>
+</div>
+<p class="font-label-md text-label-md text-outline">SKU: SMZ-001</p>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Brand: Zebra</p>
+</div>
+<div class="flex justify-between items-end mt-2">
+<div class="flex flex-col">
+<span class="text-[10px] text-outline uppercase font-bold tracking-wider">Current Stock</span>
+<span class="font-headline-sm text-headline-sm text-primary">85 <small class="text-xs text-on-surface-variant">units</small></span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Product Card 4 -->
+<div class="relative overflow-hidden rounded-xl bg-surface-container-lowest border border-outline/20 hover:shadow-lg transition-shadow group">
+<div class="relative bg-surface-container-lowest p-4 flex gap-4 swipe-container">
+<div class="w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="An assortment of premium heavy-duty warehouse storage containers in light gray and white colors, stacked symmetrically in a bright, modern storage facility. The lighting is bright and clear, emphasizing the cleanliness of the warehouse. The composition is highly organized, using an 8px grid-like precision in the stacking, reflecting the authoritative and systematic personality of the InventoryFlow brand." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBNUqbzyAA1EbA1eaKYJVzWWyBy_wmM1xusWa4PIxwo9vtvNdo5ILThEABqHSnPfMRpaZsswHaTmo0Q_qiwvbfF4c4MNfRGbkahhxH1X8hPBrq-14IXBqASSbt1ARnU2E_kEcs57lmkNzHAAONOWTbtgJq8h119YNNx_6SlPU7DH-rvC_NIDnBfFcn2tltEXH7tEa4go7ICChi4zZUeyYPt_68zWeIX0AekjvabKmxaf3eg0tZJ6hsv">
+</div>
+<div class="flex-1 flex flex-col justify-between">
+<div>
+<div class="flex justify-between items-start">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">ToughBin 40L</h3>
+<span class="bg-red-100 text-red-800 text-[10px] px-2 py-0.5 rounded-full font-label-md">OUT OF STOCK</span>
+</div>
+<p class="font-label-md text-label-md text-outline">SKU: TB-40L-GRY</p>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Brand: StoragePlus</p>
+</div>
+<div class="flex justify-between items-end mt-2">
+<div class="flex flex-col">
+<span class="text-[10px] text-outline uppercase font-bold tracking-wider">Current Stock</span>
+<span class="font-headline-sm text-headline-sm text-primary">0 <small class="text-xs text-on-surface-variant">units</small></span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Floating Action Button (FAB) -->
+<button class="fixed bottom-24 right-6 w-14 h-14 bg-primary text-on-primary rounded-full shadow-xl flex items-center justify-center hover:scale-110 active:scale-95 transition-transform z-50">
+<span class="material-symbols-outlined text-[28px]">add</span>
+</button>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 left-0 w-full h-20 flex justify-around items-center px-4 pb-2 bg-surface-container-lowest border-t border-surface-variant shadow-md z-50">
+<a class="flex flex-col items-center justify-center text-on-surface-variant py-1 hover:bg-surface-variant transition-colors rounded-xl px-2" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant py-1 hover:bg-surface-variant transition-colors rounded-xl px-2" href="#">
+<span class="material-symbols-outlined">qr_code_scanner</span>
+<span class="font-label-md text-label-md">Scanner</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full px-4 py-1 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">inventory_2</span>
+<span class="font-label-md text-label-md">Products</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant py-1 hover:bg-surface-variant transition-colors rounded-xl px-2" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-label-md text-label-md">Reports</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant py-1 hover:bg-surface-variant transition-colors rounded-xl px-2" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+</nav>
+<script>
+        // Micro-interaction for swipe effect on mobile (Simplified for prototype)
+        // In a real app, we'd use a hammer.js or similar for touch gestures.
+        document.querySelectorAll('.swipe-container').forEach(card => {
+            card.addEventListener('click', (e) => {
+                // If on mobile, toggle a 'swiped' state
+                if (window.innerWidth < 768) {
+                    const isSwiped = card.style.transform === 'translateX(-128px)';
+                    card.style.transform = isSwiped ? 'translateX(0)' : 'translateX(-128px)';
+                }
+            });
+        });
+
+        // Filter chip toggle
+        const chips = document.querySelectorAll('.filter-chip');
+        chips.forEach(chip => {
+            chip.addEventListener('click', () => {
+                chips.forEach(c => {
+                    c.classList.remove('bg-primary', 'text-on-primary');
+                    c.classList.add('border', 'border-outline', 'text-on-surface-variant');
+                });
+                chip.classList.add('bg-primary', 'text-on-primary');
+                chip.classList.remove('border', 'border-outline', 'text-on-surface-variant');
+            });
+        });
+    </script>
+</body></html>

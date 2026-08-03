@@ -1,0 +1,13 @@
+gradio>=4.44.0
+fastapi>=0.111.0
+uvicorn[standard]>=0.30.0
+opencv-python-headless>=4.9.0
+numpy>=1.26.0
+Pillow>=10.4.0
+pandas>=2.2.0
+openpyxl>=3.1.0
+gspread>=5.0.0
+google-auth>=2.0.0
+pyzbar>=0.1.0
+easyocr>=1.4.0
+paddleocr>=2.8.0
