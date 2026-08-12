@@ -172,13 +172,48 @@ def stock_status(product: Dict[str, Any]) -> str:
     return "in"
 
 
-# ── Routes: UI ────────────────────────────────────────────────────────────────
+# ── Routes: UI & Assets ───────────────────────────────────────────────────────
 @app.get("/", include_in_schema=False)
 async def serve_ui():
     """Serve the mobile UI HTML file."""
     if MOBILE_HTML.exists():
         return FileResponse(str(MOBILE_HTML), media_type="text/html")
     raise HTTPException(404, "mobile_ui.html not found")
+
+
+@app.get("/manifest.json", include_in_schema=False)
+async def serve_manifest():
+    """Serve web app manifest to prevent 404 when mobile browsers request PWA metadata."""
+    return JSONResponse({
+        "short_name": "InventoryFlow",
+        "name": "InventoryFlow — AI Inventory System",
+        "start_url": "/",
+        "background_color": "#91000a",
+        "theme_color": "#91000a",
+        "display": "standalone",
+        "orientation": "portrait"
+    })
+
+
+@app.get("/.well-known/appspecific/com.chrome.devtools.json", include_in_schema=False)
+async def serve_chrome_devtools():
+    """Silence Chrome DevTools auto-discovery 404 log noise."""
+    return JSONResponse({})
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def serve_favicon():
+    """Silence favicon 404 log noise."""
+    from fastapi.responses import Response
+    return Response(status_code=204)
+
+
+@app.get("/{path:path}.map", include_in_schema=False)
+async def serve_sourcemap(path: str):
+    """Silence missing JS/CSS source map (.map) 404 log noise."""
+    from fastapi.responses import Response
+    return Response(status_code=204)
+
 
 
 # ── Routes: API Info ──────────────────────────────────────────────────────────
