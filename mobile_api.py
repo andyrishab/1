@@ -182,6 +182,7 @@ async def serve_ui():
 
 
 @app.get("/manifest.json", include_in_schema=False)
+@app.get("/dashboard/manifest.json", include_in_schema=False)
 async def serve_manifest():
     """Serve web app manifest to prevent 404 when mobile browsers request PWA metadata."""
     return JSONResponse({
@@ -193,6 +194,7 @@ async def serve_manifest():
         "display": "standalone",
         "orientation": "portrait"
     })
+
 
 
 @app.get("/.well-known/appspecific/com.chrome.devtools.json", include_in_schema=False)
