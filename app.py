@@ -129,31 +129,31 @@ def _print_banner(env: str, port: int) -> None:
 def main() -> None:
     _install_signal_handlers()
 
-    env  = detect_environment()
+    env   = detect_environment()
     share = gradio_share_enabled()
 
     # ── Resolve single port ───────────────────────────────────────────────────
-    raw = os.getenv("SERVER_PORT", os.getenv("MOBILE_API_PORT", ""))
+    raw  = os.getenv("SERVER_PORT", os.getenv("MOBILE_API_PORT", ""))
     port = int(raw) if raw.isdigit() else find_free_port(8765)
 
-    LOGGER.info("InventoryFlow starting — env=%s  port=%d", env, port)
+    LOGGER.info("InventoryFlow starting — env=%s  port=%d  share=%s", env, port, share)
 
     # ── Import FastAPI app (mobile_api.py) ────────────────────────────────────
     from mobile_api import app as fastapi_app  # noqa: PLC0415
 
     # ── Build Gradio UI ───────────────────────────────────────────────────────
+    gradio_blocks = None
     try:
         import gradio as gr  # noqa: PLC0415
         from ui import build_ui  # noqa: PLC0415
         gradio_blocks = build_ui()
     except Exception as exc:
         LOGGER.error("Gradio UI build failed: %s — running API-only mode.", exc)
-        gradio_blocks = None
 
     # ── Mount Gradio into FastAPI at /dashboard ───────────────────────────────
     if gradio_blocks is not None:
         try:
-            import gradio as gr  # noqa: PLC0415 (may already be imported above)
+            import gradio as gr  # noqa: PLC0415
             fastapi_app = gr.mount_gradio_app(
                 fastapi_app,
                 gradio_blocks,
@@ -163,8 +163,31 @@ def main() -> None:
         except Exception as exc:
             LOGGER.error("Could not mount Gradio: %s — API still available.", exc)
 
+    # ── Handle Public Share Tunnel (for Google Colab & GRADIO_SHARE=1) ───────
+    share_url = None
+    if share and gradio_blocks is not None:
+        try:
+            LOGGER.info("Requesting public Gradio share link…")
+            # Create frpc tunnel to port for public HTTPS URL
+            _, _, share_url = gradio_blocks.launch(
+                share=True,
+                server_name="0.0.0.0",
+                server_port=port,
+                prevent_thread_lock=True,
+                quiet=True,
+            )
+            LOGGER.info("Public Share URL created: %s", share_url)
+        except Exception as exc:
+            LOGGER.warning("Could not create public share link: %s", exc)
+
     # ── Print startup banner ──────────────────────────────────────────────────
     _print_banner(env, port)
+    if share_url:
+        print(f"  🌐 PUBLIC GRADIO LIVE URL (Works Anywhere!):")
+        print(f"     📱 Mobile UI  : {share_url}/")
+        print(f"     🖥️  Dashboard  : {share_url}/dashboard")
+        print(f"     📋 API Docs   : {share_url}/docs")
+        print("═" * 64, flush=True)
 
     # ── Launch single uvicorn server (blocks here) ────────────────────────────
     import uvicorn  # noqa: PLC0415
@@ -180,3 +203,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
