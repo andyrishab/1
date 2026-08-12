@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, TypeVar
@@ -49,20 +51,16 @@ def parse_date(value: Any) -> str:
         return ""
     if isinstance(value, datetime):
         return value.date().isoformat()
-    try:
-        parsed = datetime.fromisoformat(str(value))
-        return parsed.date().isoformat()
-    except ValueError:
+    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y", "%d-%m-%Y"):
         try:
-            parsed = datetime.strptime(str(value), "%d/%m/%Y")
-            return parsed.date().isoformat()
+            return datetime.strptime(str(value).strip(), fmt).date().isoformat()
         except ValueError:
-            try:
-                parsed = datetime.strptime(str(value), "%Y-%m-%d")
-                return parsed.date().isoformat()
-            except ValueError:
-                LOGGER.warning("Unable to parse date: %s", value)
-                return ""
+            continue
+    try:
+        return datetime.fromisoformat(str(value)).date().isoformat()
+    except ValueError:
+        LOGGER.warning("Unable to parse date: %s", value)
+        return ""
 
 
 def normalize_currency(value: Any) -> str:
@@ -90,8 +88,21 @@ def load_json(path: Path) -> Dict[str, Any]:
 
 
 def save_json(path: Path, payload: Dict[str, Any]) -> None:
-    with path.open("w", encoding="utf-8") as handle:
-        json.dump(payload, handle, indent=2)
+    """Atomically write JSON — uses a temp file then rename to prevent corruption."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    # Write to temp file in the same directory, then rename
+    fd, tmp_path = tempfile.mkstemp(dir=path.parent, suffix='.tmp')
+    try:
+        with os.fdopen(fd, 'w', encoding='utf-8') as f:
+            json.dump(payload, f, indent=2, ensure_ascii=False)
+        os.replace(tmp_path, path)  # atomic on POSIX; near-atomic on Windows
+    except Exception:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
 
 
 def validate_required(payload: Dict[str, Any], fields: Sequence[str]) -> List[str]:

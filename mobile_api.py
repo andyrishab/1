@@ -132,6 +132,12 @@ class CountItemUpdate(BaseModel):
     notes: str = ""
 
 
+class StockAdjustBody(BaseModel):
+    quantity: int                # positive = add, negative = subtract
+    reason: str = "manual_adjustment"
+    mode: str = "adjust"         # "adjust" (delta) or "set" (absolute)
+
+
 class SettingsBody(BaseModel):
     theme: str = "light"
     dark_mode: bool = False
@@ -355,6 +361,38 @@ async def delete_product(product_id: int):
         raise
     except Exception as exc:
         LOGGER.error("Error deleting product %s: %s", product_id, exc)
+        raise HTTPException(500, f"Internal error: {exc}") from exc
+
+
+@app.patch("/api/products/{product_id}/stock")
+async def adjust_product_stock(product_id: int, body: StockAdjustBody):
+    """Quickly adjust or set a product's stock without touching other fields."""
+    try:
+        if body.mode == "set":
+            updated = ps.update_stock(product_id, body.quantity)
+        else:
+            updated = ps.adjust_stock(product_id, body.quantity, reason=body.reason)
+        if not updated:
+            raise HTTPException(404, "Product not found")
+        act.log_action(
+            "stock_adjusted_mobile",
+            f"Product id={product_id} stock {body.mode}={body.quantity} ({body.reason})",
+        )
+        mov.record_movement({
+            "product_id": product_id,
+            "product_name": updated.get("product_name", ""),
+            "type": "manual_adjustment",
+            "quantity": body.quantity,
+            "reason": body.reason,
+            "warehouse_from": updated.get("warehouse", "Main"),
+            "warehouse_to": updated.get("warehouse", "Main"),
+        })
+        LOGGER.info("API PATCH /api/products/%s/stock mode=%s qty=%s", product_id, body.mode, body.quantity)
+        return {"product_id": product_id, "new_stock": updated.get("current_stock"), "mode": body.mode}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        LOGGER.error("Error adjusting stock for product %s: %s", product_id, exc)
         raise HTTPException(500, f"Internal error: {exc}") from exc
 
 
@@ -684,8 +722,14 @@ async def download_sample_import():
 
 # ── Routes: Reset ─────────────────────────────────────────────────────────────
 @app.post("/api/reset")
-async def reset_all_data():
-    """Reset all inventory data (products, counts, movements, activity, forms)."""
+async def reset_all_data(confirm: str = Query("")):
+    """Reset all inventory data. Requires ?confirm=YES to execute."""
+    if confirm.strip().upper() != "YES":
+        raise HTTPException(
+            400,
+            "Safety guard: append ?confirm=YES to the URL to confirm data reset. "
+            "This action is irreversible.",
+        )
     try:
         save_json(PRODUCTS_JSON, {"products": []})
         save_json(COUNTS_JSON, {"counts": []})

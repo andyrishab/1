@@ -85,8 +85,11 @@ class InventoryService:
         sessions = self.load()
         for index, session in enumerate(sessions):
             if int(session.get("id", 0)) == int(session_id):
+                existing_items = session.get("items", [])
+                # Use max(ids)+1 to avoid collisions if items are removed
+                next_item_id = max((it.get("item_id", 0) for it in existing_items), default=0) + 1
                 row = {
-                    "item_id": len(session.get("items", [])) + 1,
+                    "item_id": next_item_id,
                     "product_id": int(item.get("product_id", 0)),
                     "product_name": safe_text(item.get("product_name")),
                     "barcode": safe_text(item.get("barcode")),
@@ -98,6 +101,7 @@ class InventoryService:
                     "notes": safe_text(item.get("notes", "")),
                     "updated_at": utc_now(),
                 }
+
                 session_items = list(session.get("items", []))
                 session_items.append(row)
                 session["items"] = session_items

@@ -117,7 +117,21 @@ class ProductService:
         products = self.load()
         for index, product in enumerate(products):
             if int(product.get("id", 0)) == int(product_id):
-                updated = {**product, **self._sanitize_payload(payload)}
+                # Only sanitize and merge fields that are explicitly provided
+                # to prevent partial updates from wiping unrelated fields.
+                if len(payload) > 5:  # full update — sanitize everything
+                    sanitized = self._sanitize_payload(payload)
+                    updated = {**product, **sanitized}
+                else:  # targeted partial update — only merge provided keys
+                    updated = dict(product)
+                    for key, value in payload.items():
+                        if value is not None:
+                            if key in {"current_stock", "opening_stock", "minimum_stock", "maximum_stock", "reorder_level"}:
+                                updated[key] = safe_int(value, 0)
+                            elif key in {"purchase_price", "selling_price", "mrp"}:
+                                updated[key] = safe_float(value, 0.0)
+                            else:
+                                updated[key] = value
                 updated["id"] = int(product_id)
                 updated["updated_at"] = utc_now()
                 products[index] = updated
@@ -189,17 +203,32 @@ class ProductService:
         return None
 
     def adjust_stock(self, product_id: int, quantity: int, reason: str = "adjustment") -> Optional[Dict[str, Any]]:
-        product = self.get(product_id)
-        if product is None:
-            return None
-        updated_stock = safe_int(product.get("current_stock"), 0) + quantity
-        payload = {"current_stock": max(0, updated_stock), "updated_at": utc_now()}
-        if product.get("opening_stock") is None:
-            payload["opening_stock"] = product.get("current_stock", 0)
-        return self.update(product_id, payload)
+        """Increment or decrement stock by quantity without touching other fields."""
+        products = self.load()
+        for index, product in enumerate(products):
+            if int(product.get("id", 0)) == int(product_id):
+                current = safe_int(product.get("current_stock"), 0)
+                new_stock = max(0, current + quantity)
+                if product.get("opening_stock") is None:
+                    products[index]["opening_stock"] = current
+                products[index]["current_stock"] = new_stock
+                products[index]["updated_at"] = utc_now()
+                self.save(products)
+                LOGGER.info("Stock adjusted: product id=%s %+d → %d (%s)", product_id, quantity, new_stock, reason)
+                return products[index]
+        return None
 
     def update_stock(self, product_id: int, new_stock: int) -> Optional[Dict[str, Any]]:
-        return self.update(product_id, {"current_stock": safe_int(new_stock, 0)})
+        """Set stock to an absolute value without touching other fields."""
+        products = self.load()
+        for index, product in enumerate(products):
+            if int(product.get("id", 0)) == int(product_id):
+                products[index]["current_stock"] = safe_int(new_stock, 0)
+                products[index]["updated_at"] = utc_now()
+                self.save(products)
+                LOGGER.info("Stock set: product id=%s → %d", product_id, new_stock)
+                return products[index]
+        return None
 
     def recent_products(self, limit: int = 10) -> List[Dict[str, Any]]:
         products = sorted(self.load(), key=lambda item: item.get("created_at", ""), reverse=True)
