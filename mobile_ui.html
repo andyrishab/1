@@ -1204,28 +1204,84 @@ function focusBcInput() {
 // STOCK COUNTING
 // ═══════════════════════════════════════════════════
 async function addItem() {
-  const inp=document.getElementById('bc-input');
-  const val=inp.value.trim();
-  if(!val){showToast('Enter a barcode or SKU');return;}
-  // Try to resolve via API
-  let product=null;
-  const result=await api(`/products/lookup?sku=${encodeURIComponent(val)}&barcode=${encodeURIComponent(val)}`);
-  if(result&&result.id) product=result;
-  else product={id:0,product_name:val,sku:val,barcode:val,brand:'',category:'',current_stock:0};
-  // Add to session on API
-  if(sessionId){
-    const row=await api(`/counts/${sessionId}/items`,{method:'POST',body:JSON.stringify({
-      product_id:product.id||0,product_name:product.product_name,sku:product.sku,
-      barcode:product.barcode||'',expected_quantity:product.current_stock||0,counted_quantity:0
-    })});
-    if(row) product._item_id=row.item_id;
+  const inp = document.getElementById('bc-input');
+  const val = inp.value.trim();
+  if (!val) { showToast('Enter a barcode or SKU'); return; }
+
+  // ── Resolve product from API ──────────────────────────────────
+  let product = null;
+  const result = await api(`/products/lookup?sku=${encodeURIComponent(val)}&barcode=${encodeURIComponent(val)}`);
+  if (result && result.id) product = result;
+  else product = { id: 0, product_name: val, sku: val, barcode: val, brand: '', category: '', current_stock: 0 };
+
+  // ── Check if this barcode/SKU already exists in the queue ─────
+  const matchKey = (item) => {
+    const bc = (product.barcode || '').trim();
+    const sk = (product.sku    || '').trim();
+    const nm = (product.product_name || '').trim().toLowerCase();
+    if (bc && bc === (item.barcode || '').trim()) return true;
+    if (sk && sk === (item.sku    || '').trim()) return true;
+    if (nm && nm === (item.product_name || '').trim().toLowerCase()) return true;
+    return false;
+  };
+
+  const existingIdx = queue.findIndex(matchKey);
+
+  if (existingIdx !== -1) {
+    // ── DUPLICATE SCAN → increment count ─────────────────────────
+    queue[existingIdx].counted = (queue[existingIdx].counted || 0) + 1;
+    qIdx = existingIdx;
+
+    // Sync updated count to API
+    if (sessionId && queue[existingIdx]._item_id) {
+      api(`/counts/${sessionId}/items/${queue[existingIdx]._item_id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          counted_quantity: queue[existingIdx].counted,
+          status: 'pending'
+        })
+      });
+    }
+
+    inp.value = '';
+    renderQueue();
+    syncCard();
+
+    // Visual pulse on count display
+    const el = document.getElementById('cnt-counted');
+    if (el) {
+      el.style.transform = 'scale(1.4)';
+      el.style.color = '#22c55e';
+      setTimeout(() => { el.style.transform = 'scale(1)'; el.style.color = ''; }, 300);
+    }
+    showToast(`✅ ${product.product_name || val}: count = ${queue[existingIdx].counted}`);
+    return;
   }
-  queue.push({...product,counted:0,_status:product._status||'in'});
-  qIdx=queue.length-1;
-  inp.value='';
-  renderQueue(); syncCard();
-  showToast('Added: '+(product.product_name||val));
+
+  // ── NEW item → add to session and queue ───────────────────────
+  if (sessionId) {
+    const row = await api(`/counts/${sessionId}/items`, {
+      method: 'POST',
+      body: JSON.stringify({
+        product_id: product.id || 0,
+        product_name: product.product_name,
+        sku: product.sku,
+        barcode: product.barcode || '',
+        expected_quantity: product.current_stock || 0,
+        counted_quantity: 1
+      })
+    });
+    if (row) product._item_id = row.item_id;
+  }
+
+  queue.push({ ...product, counted: 1, _status: product._status || 'in' });
+  qIdx = queue.length - 1;
+  inp.value = '';
+  renderQueue();
+  syncCard();
+  showToast('➕ Added: ' + (product.product_name || val));
 }
+
 
 function adjust(d){
   const newVal=Math.max(0,(queue[qIdx]?.counted||0)+d);
@@ -1540,11 +1596,13 @@ function playBeep(){
 }
 
 function onBarcodeScanned(decodedText, decodedResult) {
-  // Debounce — same barcode must wait 2 s before re-trigger
+  // Debounce — blocks duplicate frame-triggers from ONE physical scan
+  // 600 ms is enough to suppress multi-frame noise but allows intentional re-scans
   const now = Date.now();
-  if (decodedText === _lastScanned && now - _lastScannedTs < 2000) return;
-  _lastScanned    = decodedText;
-  _lastScannedTs  = now;
+  if (decodedText === _lastScanned && now - _lastScannedTs < 600) return;
+  _lastScanned   = decodedText;
+  _lastScannedTs = now;
+
 
   playBeep();
   const fmt = (decodedResult && decodedResult.result &&
