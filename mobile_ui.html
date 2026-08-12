@@ -917,7 +917,37 @@ async function loadProducts() {
     </div>`;}).join('');
 }
 
+// ─── Open product form pre-filled from a scan (new barcode) ──────
+let _scanContext = false; // true when modal was opened from scanner
+
+function openAddProductModalFromScan(barcodeValue) {
+  _scanContext = true;
+  document.getElementById('pm-id').value = '';
+  document.getElementById('pm-title').textContent = '🆕 New Product';
+  document.getElementById('pm-icon').textContent = 'add_box';
+  document.getElementById('pm-name').value = '';
+  document.getElementById('pm-sku').value = '';
+  document.getElementById('pm-barcode').value = barcodeValue || '';
+  document.getElementById('pm-category').value = '';
+  document.getElementById('pm-brand').value = '';
+  document.getElementById('pm-stock').value = '0';
+  document.getElementById('pm-minstock').value = '5';
+  document.getElementById('pm-unit').value = 'pcs';
+  document.getElementById('pm-price').value = '';
+  document.getElementById('pm-purchase').value = '';
+
+  const modal = document.getElementById('product-modal');
+  modal.classList.remove('pointer-events-none', 'opacity-0');
+  modal.classList.add('opacity-100');
+
+  // Focus product name so user can type right away
+  setTimeout(() => document.getElementById('pm-name')?.focus(), 200);
+
+  showToast('🆕 New barcode — fill details and save');
+}
+
 function openAddProductModal() {
+  _scanContext = false;
   document.getElementById('pm-id').value = '';
   document.getElementById('pm-title').textContent = 'Add New Product';
   document.getElementById('pm-icon').textContent = 'add_box';
@@ -996,7 +1026,7 @@ async function saveProductSubmit(e) {
   };
 
   let res = null;
-  if(id) {
+  if (id) {
     res = await api('/products/' + id, { method: 'PUT', body: JSON.stringify(body) });
   } else {
     res = await api('/products', { method: 'POST', body: JSON.stringify(body) });
@@ -1005,11 +1035,19 @@ async function saveProductSubmit(e) {
   btn.disabled = false;
   btn.style.opacity = '1';
 
-  if(res) {
+  if (res) {
     showToast(id ? 'Product updated ✓' : 'Product created ✓');
     closeProductModal();
     loadProducts();
-    if(typeof loadDashboard === 'function') loadDashboard();
+    if (typeof loadDashboard === 'function') loadDashboard();
+
+    // ── If opened from scanner → add new product to count queue ──
+    if (_scanContext && !id && res.id) {
+      _scanContext = false;
+      res._status = 'out'; // stock was just set
+      await _addProductToCountQueue(res);
+    }
+    _scanContext = false;
   } else {
     showToast('⚠️ Save failed — check API connection');
   }
@@ -1212,7 +1250,13 @@ async function addItem() {
   let product = null;
   const result = await api(`/products/lookup?sku=${encodeURIComponent(val)}&barcode=${encodeURIComponent(val)}`);
   if (result && result.id) product = result;
-  else product = { id: 0, product_name: val, sku: val, barcode: val, brand: '', category: '', current_stock: 0 };
+
+  // ── UNKNOWN barcode → open new product form ───────────────────
+  if (!product) {
+    inp.value = '';
+    openAddProductModalFromScan(val);
+    return;
+  }
 
   // ── Check if this barcode/SKU already exists in the queue ─────
   const matchKey = (item) => {
@@ -1258,7 +1302,12 @@ async function addItem() {
     return;
   }
 
-  // ── NEW item → add to session and queue ───────────────────────
+  // ── KNOWN product, first scan → add to queue ─────────────────
+  await _addProductToCountQueue(product);
+}
+
+// ─── Internal: push a resolved product into count queue + API ────
+async function _addProductToCountQueue(product) {
   if (sessionId) {
     const row = await api(`/counts/${sessionId}/items`, {
       method: 'POST',
@@ -1273,13 +1322,11 @@ async function addItem() {
     });
     if (row) product._item_id = row.item_id;
   }
-
   queue.push({ ...product, counted: 1, _status: product._status || 'in' });
   qIdx = queue.length - 1;
-  inp.value = '';
   renderQueue();
   syncCard();
-  showToast('➕ Added: ' + (product.product_name || val));
+  showToast('➕ Added: ' + (product.product_name || product.barcode || '?'));
 }
 
 
