@@ -679,28 +679,36 @@
 <script>
 // ═══════════════════════════════════════════════════
 // CONFIG — Dynamic API base URL detection
-// Works on localhost, 127.0.0.1, and gradio.live
+// Single-port mode: FastAPI serves this page, so API
+// is always at the same origin (/api/...)
 // ═══════════════════════════════════════════════════
-const API_PORT = 8765;
+const API_PORT = 8765; // used only for legacy dual-port fallback
 
 function resolveApiBase() {
-  const h = window.location.hostname;
-  // If served directly from our FastAPI server (same port)
-  if (window.location.port === String(API_PORT)) {
-    return window.location.origin + '/api';
+  const { protocol, hostname, port, origin } = window.location;
+
+  // ── Single-port mode (FastAPI serves this page directly) ──────
+  // API routes are on the same server → use relative /api
+  // This works on localhost, LAN IP, ngrok, gradio.live, etc.
+  if (port === '8765' || port === '9000' || port === '') {
+    // If no port or our known API port → same origin
+    return origin + '/api';
   }
-  // If served from Gradio (different port) or gradio.live —
-  // still point to localhost:8765 as the API runs there.
-  // On gradio.live the user's mobile device must reach the API port directly.
-  if (h === 'localhost' || h === '127.0.0.1' || h === '0.0.0.0') {
+
+  // ── Gradio-served page (legacy dual-port mode) ─────────────────
+  // The API still runs on API_PORT on the same host
+  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0') {
     return `http://localhost:${API_PORT}/api`;
   }
-  // Custom host / gradio.live / ngrok — use same hostname, API port
-  return `http://${h}:${API_PORT}/api`;
+
+  // ── Remote host (ngrok / gradio.live tunnel) ───────────────────
+  // In single-port mode, relative origin works perfectly
+  return origin + '/api';
 }
 
 const API = resolveApiBase();
 console.log('[InventoryFlow] API base URL:', API);
+
 
 const META = {
   'sc-home':       {title:'Stock Count',       back:false,nav:false,imp:false,exp:false},
