@@ -727,19 +727,19 @@ console.log('[InventoryFlow] API base URL:', API);
 
 
 const META = {
-  'sc-home':       {title:'Stock Count',       back:false,nav:false,imp:false,exp:false},
+  'sc-home':       {title:'Stock Count',       back:false,nav:true, imp:false,exp:false},
   'sc-dashboard':  {title:'InventoryFlow',     back:false,nav:true, imp:false,exp:false},
-  'sc-master':     {title:'Master Data',       back:true, nav:false,imp:false,exp:false},
+  'sc-master':     {title:'Master Data',       back:true, nav:true, imp:false,exp:false},
   'sc-products':   {title:'Product Master',    back:true, nav:true, imp:true, exp:true},
   'sc-categories': {title:'Master Categories', back:true, nav:true, imp:false,exp:false},
-  'sc-countinfo':  {title:'Stock Count',       back:true, nav:false,imp:false,exp:false},
+  'sc-countinfo':  {title:'Stock Count',       back:true, nav:true, imp:false,exp:false},
   'sc-counting':   {title:'Start Counting',    back:true, nav:true, imp:false,exp:false},
   'sc-result':     {title:'View Result',       back:false,nav:true, imp:false,exp:true},
-  'sc-settings':   {title:'Menu Setting',      back:true, nav:false,imp:false,exp:false},
+  'sc-settings':   {title:'Menu Setting',      back:true, nav:true, imp:false,exp:false},
 };
 
 const NAV_MAP = {
-  'sc-dashboard':'nb-dash','sc-counting':'nb-scan','sc-countinfo':'nb-scan',
+  'sc-home':'nb-scan','sc-dashboard':'nb-dash','sc-counting':'nb-scan','sc-countinfo':'nb-scan',
   'sc-products':'nb-prod','sc-categories':'nb-prod','sc-master':'nb-prod',
   'sc-result':'nb-rep','sc-settings':'nb-set',
 };
@@ -770,7 +770,7 @@ function go(id, title, push=false) {
   const m = META[id]||{title:title||id,back:true,nav:true,imp:false,exp:false};
   setHeader(m);
   const nav = document.getElementById('bot-nav');
-  nav.classList.toggle('hidden', id==='sc-home'||id==='sc-countinfo');
+  nav.classList.remove('hidden');
   // Highlight nav
   document.querySelectorAll('.nav-btn').forEach(b=>{b.classList.remove('bg-primary-container','text-on-primary-container','rounded-full');b.classList.add('text-on-surface-variant');});
   const nb = document.getElementById(NAV_MAP[id]);
@@ -787,11 +787,12 @@ function goBack() {
   cur=prev;
   const m=META[prev]||{title:'',back:false,nav:false,imp:false,exp:false};
   setHeader(m);
-  document.getElementById('bot-nav').classList.toggle('hidden',prev==='sc-home'||prev==='sc-countinfo');
+  document.getElementById('bot-nav').classList.remove('hidden');
   document.querySelectorAll('.nav-btn').forEach(b=>{b.classList.remove('bg-primary-container','text-on-primary-container','rounded-full');b.classList.add('text-on-surface-variant');});
   const nb=document.getElementById(NAV_MAP[prev]);
   if(nb){nb.classList.add('bg-primary-container','text-on-primary-container','rounded-full','px-4');nb.classList.remove('text-on-surface-variant','px-2');}
 }
+
 
 function setHeader(m) {
   document.getElementById('hdr-title').textContent = m.title;
