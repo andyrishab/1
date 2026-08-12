@@ -1145,52 +1145,54 @@ let _embedCameraRunning = false;
 
 async function startEmbeddedCamera() {
   const container = document.getElementById('embed-camera-reader');
-  if(!container) return;
-  if(typeof Html5Qrcode === 'undefined') {
+  if (!container) return;
+  if (typeof Html5Qrcode === 'undefined') {
     console.warn('[Scanner] Html5Qrcode library not loaded yet');
+    showToast('Scanner library not ready — refresh page');
     return;
   }
-  // Destroy stale instance before creating a new one
-  if(embedHtml5Qrcode) {
-    try { await embedHtml5Qrcode.stop(); } catch(e) {}
+
+  // Always tear down any existing instance cleanly
+  if (embedHtml5Qrcode) {
+    try { await embedHtml5Qrcode.stop(); } catch (e) {}
+    try { embedHtml5Qrcode.clear(); } catch (e) {}
     embedHtml5Qrcode = null;
     _embedCameraRunning = false;
   }
-  try {
-    embedHtml5Qrcode = new Html5Qrcode("embed-camera-reader", { verbose: false });
-    // Support ALL major 1D + 2D barcode formats
-    const formats = [
-      Html5QrcodeSupportedFormats.QR_CODE,
-      Html5QrcodeSupportedFormats.EAN_13,
-      Html5QrcodeSupportedFormats.EAN_8,
-      Html5QrcodeSupportedFormats.CODE_128,
-      Html5QrcodeSupportedFormats.CODE_39,
-      Html5QrcodeSupportedFormats.CODE_93,
-      Html5QrcodeSupportedFormats.UPC_A,
-      Html5QrcodeSupportedFormats.UPC_E,
-      Html5QrcodeSupportedFormats.ITF,
-      Html5QrcodeSupportedFormats.DATA_MATRIX,
-      Html5QrcodeSupportedFormats.PDF_417,
-    ].filter(f => f !== undefined);
 
-    // Wide rectangle qrbox works much better for 1D barcodes
-    const w = Math.min(container.offsetWidth || 280, 320);
+  try {
+    embedHtml5Qrcode = new Html5Qrcode('embed-camera-reader', { verbose: false });
+
+    // Dynamically measure container so qrbox is always smaller than the view
+    const cw = container.clientWidth  || 300;
+    const ch = container.clientHeight || 200;
+    const boxW = Math.floor(Math.min(cw, 300) * 0.92); // 92% of width
+    const boxH = Math.floor(boxW * 0.38);               // wide rectangle for 1D barcodes
+
+    // NOTE: Do NOT set formatsToSupport or aspectRatio — they silently
+    //       break scanning on many mobile browsers in html5-qrcode v2.3.8.
     const config = {
-      fps: 25,
-      qrbox: { width: w, height: Math.round(w * 0.4) },
-      formatsToSupport: formats,
-      aspectRatio: 1.7778  // 16:9 camera feed
+      fps: 20,
+      qrbox: { width: boxW, height: boxH },
+      videoConstraints: {
+        facingMode: { ideal: 'environment' },
+        width:  { min: 640, ideal: 1280, max: 1920 },
+        height: { min: 480, ideal: 720,  max: 1080 },
+      },
     };
+
     await embedHtml5Qrcode.start(
-      { facingMode: { ideal: "environment" } },
+      { facingMode: { ideal: 'environment' } },
       config,
       onBarcodeScanned,
-      (errMsg) => { /* per-frame decode miss — ignore */ }
+      () => {} // per-frame decode miss — normal, suppress
     );
     _embedCameraRunning = true;
-  } catch(e) {
-    console.warn('[Scanner] Embedded camera failed to start:', e);
-    showToast('Camera unavailable — enter barcode manually');
+    console.log('[Scanner] Embedded camera started. qrbox:', boxW, 'x', boxH);
+  } catch (e) {
+    console.error('[Scanner] startEmbeddedCamera failed:', e);
+    showToast('Camera failed — try the 📷 FAB button or enter barcode manually');
+    _embedCameraRunning = false;
   }
 }
 
@@ -1460,66 +1462,65 @@ function exitApp(){if(confirm('Exit InventoryFlow?')){document.querySelectorAll(
 // CAMERA BARCODE SCANNER
 // ═══════════════════════════════════════════════════
 let html5QrcodeScanner = null;
-let currentFacingMode = "environment";
+let currentFacingMode = 'environment';
 let isTorchOn = false;
 let _lastScanned = '';
 let _lastScannedTs = 0;
 
 async function openCameraScanner() {
   const modal = document.getElementById('camera-scanner-modal');
-  if(!modal) return;
+  if (!modal) return;
   modal.classList.remove('pointer-events-none', 'opacity-0');
   modal.classList.add('opacity-100');
 
-  if(typeof Html5Qrcode === 'undefined') {
-    showToast('Loading scanner library…');
-    await new Promise(r => setTimeout(r, 800));
-    if(typeof Html5Qrcode === 'undefined') {
-      showToast('Scanner library failed to load. Check your connection.');
+  // Wait for library if needed
+  if (typeof Html5Qrcode === 'undefined') {
+    showToast('Loading scanner…');
+    for (let i = 0; i < 10; i++) {
+      await new Promise(r => setTimeout(r, 300));
+      if (typeof Html5Qrcode !== 'undefined') break;
+    }
+    if (typeof Html5Qrcode === 'undefined') {
+      showToast('⚠️ Scanner library failed to load. Check internet.');
       return;
     }
   }
 
-  // Always destroy stale instance
-  if(html5QrcodeScanner) {
-    try { await html5QrcodeScanner.stop(); } catch(e) {}
+  // Clean up previous instance
+  if (html5QrcodeScanner) {
+    try { await html5QrcodeScanner.stop(); } catch (e) {}
+    try { html5QrcodeScanner.clear(); } catch (e) {}
     html5QrcodeScanner = null;
   }
 
   try {
-    html5QrcodeScanner = new Html5Qrcode("camera-reader", { verbose: false });
-
-    const formats = [
-      Html5QrcodeSupportedFormats.QR_CODE,
-      Html5QrcodeSupportedFormats.EAN_13,
-      Html5QrcodeSupportedFormats.EAN_8,
-      Html5QrcodeSupportedFormats.CODE_128,
-      Html5QrcodeSupportedFormats.CODE_39,
-      Html5QrcodeSupportedFormats.CODE_93,
-      Html5QrcodeSupportedFormats.UPC_A,
-      Html5QrcodeSupportedFormats.UPC_E,
-      Html5QrcodeSupportedFormats.ITF,
-      Html5QrcodeSupportedFormats.DATA_MATRIX,
-      Html5QrcodeSupportedFormats.PDF_417,
-    ].filter(f => f !== undefined);
+    html5QrcodeScanner = new Html5Qrcode('camera-reader', { verbose: false });
 
     const readerEl = document.getElementById('camera-reader');
-    const w = Math.min(readerEl ? readerEl.offsetWidth : 300, 340);
+    const rw = readerEl ? (readerEl.clientWidth || readerEl.offsetWidth) : 300;
+    const boxW = Math.floor(Math.min(rw, 340) * 0.90);
+    const boxH = Math.floor(boxW * 0.40); // wide scan zone for 1D barcodes
+
+    // Do NOT use formatsToSupport or aspectRatio — breaks v2.3.8 on many devices
     const config = {
-      fps: 25,
-      qrbox: { width: w, height: Math.round(w * 0.42) },
-      formatsToSupport: formats,
-      aspectRatio: 1.7778
+      fps: 20,
+      qrbox: { width: boxW, height: boxH },
+      videoConstraints: {
+        facingMode: { ideal: currentFacingMode },
+        width:  { min: 640, ideal: 1280, max: 1920 },
+        height: { min: 480, ideal: 720,  max: 1080 },
+      },
     };
     await html5QrcodeScanner.start(
       { facingMode: { ideal: currentFacingMode } },
       config,
       onBarcodeScanned,
-      onScanError
+      () => {} // per-frame miss — suppress
     );
+    console.log('[Scanner] Modal camera started. qrbox:', boxW, 'x', boxH);
     showToast('📷 Camera active — point at barcode');
   } catch (err) {
-    console.warn('[Scanner] openCameraScanner error:', err);
+    console.error('[Scanner] openCameraScanner error:', err);
     showToast('Camera unavailable — enter barcode manually');
   }
 }
@@ -1539,76 +1540,74 @@ function playBeep(){
 }
 
 function onBarcodeScanned(decodedText, decodedResult) {
-  // Debounce: ignore same barcode within 2 seconds
+  // Debounce — same barcode must wait 2 s before re-trigger
   const now = Date.now();
-  if(decodedText === _lastScanned && now - _lastScannedTs < 2000) return;
-  _lastScanned = decodedText;
-  _lastScannedTs = now;
+  if (decodedText === _lastScanned && now - _lastScannedTs < 2000) return;
+  _lastScanned    = decodedText;
+  _lastScannedTs  = now;
 
   playBeep();
-  console.log('[InventoryFlow] Barcode scanned:', decodedText,
-    decodedResult?.result?.format?.formatName || '');
+  const fmt = (decodedResult && decodedResult.result &&
+               decodedResult.result.format &&
+               decodedResult.result.format.formatName) || '';
+  console.log('[InventoryFlow] ✅ Barcode detected:', decodedText, fmt);
 
-  // Visual flash feedback
-  const overlay = document.getElementById('embed-camera-reader') ||
-                  document.getElementById('camera-reader');
-  if(overlay) {
-    overlay.style.outline = '4px solid #91000a';
-    setTimeout(() => overlay.style.outline = '', 400);
-  }
+  // Green-flash on the camera view
+  ['embed-camera-reader', 'camera-reader'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.style.outline = '4px solid #22c55e';
+      setTimeout(() => el.style.outline = '', 500);
+    }
+  });
 
-  // Close the full-screen modal scanner (if it's open)
+  // Close full-screen modal if open
   const modal = document.getElementById('camera-scanner-modal');
-  if(modal && !modal.classList.contains('pointer-events-none')) {
+  if (modal && !modal.classList.contains('pointer-events-none')) {
     closeCameraScanner();
   }
 
-  // Update barcode input and trigger lookup
+  // Push value into input and look up product
   const input = document.getElementById('bc-input');
-  if(input) {
+  if (input) {
     input.value = decodedText;
     addItem();
-    showToast(`✅ Scanned: ${decodedText}`);
+    showToast('✅ Scanned: ' + decodedText);
   }
-}
-
-function onScanError(errMsg) {
-  // Per-frame decode miss — normal during scanning, ignore
-  // Uncomment for debugging: console.debug('[Scanner frame]', errMsg);
 }
 
 async function closeCameraScanner() {
   const modal = document.getElementById('camera-scanner-modal');
-  if(modal) {
+  if (modal) {
     modal.classList.add('pointer-events-none', 'opacity-0');
     modal.classList.remove('opacity-100');
   }
-  if(html5QrcodeScanner) {
-    try {
-      await html5QrcodeScanner.stop();
-    } catch(e){}
+  if (html5QrcodeScanner) {
+    try { await html5QrcodeScanner.stop(); } catch (e) {}
+    try { html5QrcodeScanner.clear(); } catch (e) {}
+    html5QrcodeScanner = null;
   }
 }
 
 async function switchCameraFacing() {
-  currentFacingMode = (currentFacingMode === "environment") ? "user" : "environment";
-  if(html5QrcodeScanner) {
-    try {
-      await html5QrcodeScanner.stop();
-    } catch(e){}
-    openCameraScanner();
+  currentFacingMode = (currentFacingMode === 'environment') ? 'user' : 'environment';
+  if (html5QrcodeScanner) {
+    try { await html5QrcodeScanner.stop(); } catch (e) {}
+    try { html5QrcodeScanner.clear(); } catch (e) {}
+    html5QrcodeScanner = null;
   }
+  openCameraScanner();
 }
 
 async function toggleCameraTorch() {
-  if(!html5QrcodeScanner) return;
+  const scanner = html5QrcodeScanner || embedHtml5Qrcode;
+  if (!scanner) return;
   try {
     isTorchOn = !isTorchOn;
-    await html5QrcodeScanner.applyVideoConstraints({
-      advanced: [{ torch: isTorchOn }]
-    });
-    document.getElementById('torch-lbl').textContent = isTorchOn ? 'Torch On' : 'Torch Off';
-  } catch(e) {
+    await scanner.applyVideoConstraints({ advanced: [{ torch: isTorchOn }] });
+    const lbl = document.getElementById('torch-lbl');
+    if (lbl) lbl.textContent = isTorchOn ? 'Torch On' : 'Torch Off';
+  } catch (e) {
     showToast('Torch not supported on this device');
   }
 }
