@@ -1606,6 +1606,9 @@ function formatDateStr(dStr) {
   return dStr;
 }
 
+// Session data cache keyed by id — avoids passing strings in onclick attributes
+const _sessionCache = {};
+
 async function viewSessionDetail(id) {
   const session = await api(`/counts/${id}`);
   if (!session) return;
@@ -1622,25 +1625,26 @@ async function viewSessionDetail(id) {
   showToast(`Loaded Session #${session.doc_num || session.id}`);
 }
 
-async function deleteSession(id, name, event) {
-  event.stopPropagation();
-  if (!confirm(`Delete "${name}"?\nThis cannot be undone.`)) return;
+async function deleteSession(id) {
+  const s = _sessionCache[id] || {};
+  const label = s.name || ('Session #' + id);
+  if (!confirm(`Delete "${label}"?\nThis cannot be undone.`)) return;
   showToast('Deleting…');
   const res = await api(`/counts/${id}`, { method: 'DELETE' });
   if (res) { showToast('✅ Session deleted'); loadSessions(); }
   else showToast('⚠️ Could not delete');
 }
 
-function editSession(id, name, inspector, location, event) {
-  event.stopPropagation();
+function editSession(id) {
+  const s = _sessionCache[id] || {};
   document.getElementById('sem-id').value        = id;
-  document.getElementById('sem-name').value      = name;
-  document.getElementById('sem-inspector').value = inspector;
-  document.getElementById('sem-location').value  = location;
+  document.getElementById('sem-name').value      = s.name      || '';
+  document.getElementById('sem-inspector').value = s.inspector || '';
+  document.getElementById('sem-location').value  = s.location  || '';
   const m = document.getElementById('session-edit-modal');
   m.classList.remove('opacity-0', 'pointer-events-none');
   m.classList.add('opacity-100');
-  document.getElementById('sem-name').focus();
+  setTimeout(() => document.getElementById('sem-name').focus(), 100);
 }
 
 function closeSessionEditModal() {
@@ -1680,22 +1684,23 @@ async function loadSessions() {
     cancelled: 'bg-red-50 text-red-700 border border-red-200',
   };
   const iconMap = { active:'hourglass_top', completed:'check_circle', paused:'pause_circle', cancelled:'cancel' };
+
+  // Store sessions in cache for safe access by id
+  data.sessions.forEach(s => { _sessionCache[s.id] = s; });
+
   el.innerHTML = data.sessions.slice(0, 50).map(s => {
     const color = colorMap[s.status] || 'bg-surface-container text-on-surface-variant';
     const icon  = iconMap[s.status]  || 'info';
     const items = (s.items || []).length;
     const date  = s.count_date || (s.created_at||'').slice(0,10) || '—';
     const loc   = s.location ? `📍 ${s.location}` : '';
-    // Safely JSON-escape strings for inline onclick attrs
-    const jName = JSON.stringify(s.name || 'Session #'+s.id);
-    const jIns  = JSON.stringify(s.inspector || '');
-    const jLoc  = JSON.stringify(s.location  || '');
+    // Only pass numeric id — no string args in onclick
     return `
     <div class="bg-surface-container-lowest border border-surface-variant rounded-xl mb-gutter shadow-sm overflow-hidden">
       <div class="px-4 pt-4 pb-2 cursor-pointer active:bg-surface-container-high" onclick="viewSessionDetail(${s.id})">
         <div class="flex justify-between items-start gap-2">
           <div class="flex-grow min-w-0">
-            <p class="font-bold text-base text-on-surface truncate">${s.name || 'Session #'+s.id}</p>
+            <p class="font-bold text-base text-on-surface truncate">${s.name || 'Session #' + s.id}</p>
             <p class="text-[10px] font-mono text-on-surface-variant mt-0.5 truncate">${s.doc_num||'—'} · ${s.inspector||'—'} · ${date}</p>
             <div class="flex items-center gap-3 mt-1.5 flex-wrap">
               <span class="inline-flex items-center gap-0.5 text-[10px] text-on-surface-variant">
@@ -1713,16 +1718,17 @@ async function loadSessions() {
         <button onclick="viewSessionDetail(${s.id})" class="flex-1 flex items-center justify-center gap-1 py-2.5 text-xs font-semibold text-primary active:bg-primary/10">
           <span class="material-symbols-outlined text-sm">visibility</span>View
         </button>
-        <button onclick="editSession(${s.id},${jName},${jIns},${jLoc},event)" class="flex-1 flex items-center justify-center gap-1 py-2.5 text-xs font-semibold text-secondary active:bg-secondary/10">
+        <button onclick="editSession(${s.id})" class="flex-1 flex items-center justify-center gap-1 py-2.5 text-xs font-semibold text-secondary active:bg-secondary/10">
           <span class="material-symbols-outlined text-sm">edit</span>Edit
         </button>
-        <button onclick="deleteSession(${s.id},${jName},event)" class="flex-1 flex items-center justify-center gap-1 py-2.5 text-xs font-semibold text-error active:bg-error/10">
+        <button onclick="deleteSession(${s.id})" class="flex-1 flex items-center justify-center gap-1 py-2.5 text-xs font-semibold text-error active:bg-error/10">
           <span class="material-symbols-outlined text-sm">delete</span>Delete
         </button>
       </div>
     </div>`;
   }).join('');
 }
+
 
 
 // ═══════════════════════════════════════════════════
