@@ -665,6 +665,52 @@ async def finish_count(session_id: int):
         raise HTTPException(500, f"Internal error: {exc}") from exc
 
 
+@app.patch("/api/counts/{session_id}")
+async def update_count_session(session_id: int, body: dict):
+    """Update session metadata (name, doc_num, inspector, location, notes, status)."""
+    try:
+        sessions = inv.load()
+        for i, s in enumerate(sessions):
+            if int(s.get("id", 0)) == session_id:
+                allowed = {"name", "doc_num", "inspector", "location", "notes", "status", "count_date"}
+                for k, v in body.items():
+                    if k in allowed:
+                        sessions[i][k] = v
+                from utils import utc_now
+                sessions[i]["updated_at"] = utc_now()
+                inv.save(sessions)
+                LOGGER.info("API PATCH /api/counts/%s → updated", session_id)
+                return sessions[i]
+        raise HTTPException(404, "Session not found")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        LOGGER.error("Error updating session %s: %s", session_id, exc)
+        raise HTTPException(500, f"Internal error: {exc}") from exc
+
+
+@app.delete("/api/counts/{session_id}", status_code=200)
+async def delete_count_session(session_id: int):
+    """Permanently delete a count session."""
+    try:
+        sessions = inv.load()
+        original_len = len(sessions)
+        sessions = [s for s in sessions if int(s.get("id", 0)) != session_id]
+        if len(sessions) == original_len:
+            raise HTTPException(404, "Session not found")
+        inv.save(sessions)
+        act.log_action("count_session_deleted", f"Session {session_id} deleted.")
+        LOGGER.info("API DELETE /api/counts/%s → deleted", session_id)
+        return {"status": "deleted", "id": session_id}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        LOGGER.error("Error deleting session %s: %s", session_id, exc)
+        raise HTTPException(500, f"Internal error: {exc}") from exc
+
+
+
+
 # ── Routes: Movements ─────────────────────────────────────────────────────────
 @app.get("/api/movements")
 async def list_movements(limit: int = Query(50)):
