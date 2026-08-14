@@ -1,15 +1,19 @@
 # 📦 InventoryFlow — AI Inventory & Stock Count System
 
-Enterprise inventory management powered by **OCR**, **barcode scanning**, **FastAPI REST API**, **Google Sheets sync**, and a full **mobile-first web UI**.
+Enterprise inventory management powered by **OCR**, **barcode scanning**, **FastAPI REST API**, **Gradio Dashboard**, **Google Sheets sync**, and a full **mobile-first single-page web UI**.
 
-## 🔴 Live Demo
+---
 
-| Interface | Public URL |
-|-----------|------------|
-| 🖥️ **Gradio Dashboard** | [https://3dc5af45673dd3df03.gradio.live](https://3dc5af45673dd3df03.gradio.live) |
-| 📱 **Mobile UI / REST API** | [http://localhost:8765](http://localhost:8765) *(local network)* |
+## 🌟 Single-Port Unified Architecture
 
-> **Note:** The Gradio public URL is active while `python app.py` is running. It expires after the session ends.
+InventoryFlow runs **everything on ONE port** (`8765` by default) using FastAPI and Gradio combined:
+
+| Interface | URL | Description |
+|-----------|-----|-------------|
+| 📱 **Mobile UI** | [http://localhost:8765/](http://localhost:8765/) | Mobile-first Web App for barcode scanning & stock counting |
+| 🖥️ **Gradio Dashboard** | [http://localhost:8765/dashboard/](http://localhost:8765/dashboard/) | Full Desktop Management & Analytics Dashboard |
+| 📄 **API Docs (Swagger)** | [http://localhost:8765/docs](http://localhost:8765/docs) | Interactive OpenAPI / REST Documentation |
+| 📋 **API Docs (ReDoc)** | [http://localhost:8765/redoc](http://localhost:8765/redoc) | Clean API Reference |
 
 ---
 
@@ -17,106 +21,79 @@ Enterprise inventory management powered by **OCR**, **barcode scanning**, **Fast
 
 | Feature | Description |
 |---------|-------------|
-| 📱 **Mobile UI** | Responsive single-page app at `localhost:8765` |
-| 🖥️ **Gradio Dashboard** | Desktop management UI at `localhost:7860` |
-| 📷 **Barcode Scanner** | Real-time camera scanner via Html5Qrcode |
-| 🔍 **OCR Extraction** | Auto-read product details from images |
-| 📊 **Stock Counting** | Guided count sessions with variance reporting |
-| 📦 **Product Master** | Full CRUD with SKU, barcode, category, price |
-| 🗂️ **Categories** | Auto-generated from product data |
-| 📈 **Reports** | Low stock, valuation, count, product master exports |
-| 🔄 **Google Sheets Sync** | Optional auto-sync to Google Sheets |
-| 📥 **Excel Import/Export** | Bulk import/export via `.xlsx` |
-| 🌐 **REST API** | Full FastAPI backend at `localhost:8765/api` |
-| 🔗 **Public URL** | Gradio live link → [https://3dc5af45673dd3df03.gradio.live](https://3dc5af45673dd3df03.gradio.live) |
+| 📱 **Mobile UI (SPA)** | Fast, responsive single-page mobile app with bottom navigation bar |
+| 🖥️ **Gradio Dashboard** | Rich desktop analytics dashboard mounted at `/dashboard/` |
+| 📷 **Barcode Scanner** | Embedded camera scanner (Html5Qrcode) with rapid scanning & auto-increment |
+| 🆕 **Unknown Barcode Flow** | Quick modal to register new products directly during a count |
+| 📊 **Stock Count Sessions** | Create sessions with auto-generated Doc # (`SC-YYYYMMDD-XXX`), date, location & notes |
+| ✏️ **Session & Item CRUD** | Full Edit (modal) and Delete (with confirmation) support for sessions & items |
+| 🔍 **OCR Extraction** | Automatically extract product metadata from images using OCR |
+| 📦 **Product Master** | Full product CRUD with SKU, barcode, category, unit price, & initial stock |
+| 🗂️ **Categories** | Auto-managed categories dynamically aggregated from product data |
+| 📈 **Reports & Analytics** | Stock valuation, low stock warnings, variance calculation & movement history |
+| 🔄 **Google Sheets Sync** | Optional real-time auto-sync to Google Sheets |
+| 📥 **Excel Import/Export** | Bulk import and export via `.xlsx` files |
+| 🌐 **Unified REST API** | Complete FastAPI backend under `/api/` |
+| ☁️ **Colab & Public Link** | Easy deployment in Google Colab with `GRADIO_SHARE=1` public tunnels |
 
 ---
 
-## 🚀 Quick Start (Local — Windows / Linux / macOS)
+## 🚀 Quick Start
 
-### 1. Install dependencies
+### 1. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-> **Windows users**: `pyzbar` requires the ZBar DLL. Download from https://github.com/NaturalHistoryMuseum/pyzbar#installation or install via conda.
->
-> **Linux users**: `sudo apt-get install libzbar0`
+> **Windows Note:** `pyzbar` uses ZBar DLLs. Ensure C++ runtime is installed or install via Conda if using standalone pyzbar.  
+> **Linux Note:** Install zbar via `sudo apt-get install libzbar0`.
 
-### 2. Run the application
+### 2. Run the Application
 
 ```bash
 python app.py
 ```
 
-Both servers start automatically:
+Console output will confirm startup on single port `8765`:
 
-| Server | URL |
-|--------|-----|
-| 📱 Mobile UI | http://localhost:8765 |
-| 🖥️ Gradio Dashboard | http://localhost:7860 |
-| 📄 API Docs (Swagger) | http://localhost:8765/docs |
-| 📋 API Docs (ReDoc) | http://localhost:8765/redoc |
-| 📊 Stats Endpoint | http://localhost:8765/api/stats |
-| 📦 Products Endpoint | http://localhost:8765/api/products |
-| ⬇️ Export Endpoint | http://localhost:8765/api/export |
+```
+╔══════════════════════════════════════════════════════════════╗
+║      📦  InventoryFlow — AI Inventory System  (v2)           ║
+║            Single-Port Mode · FastAPI + Gradio               ║
+╠══════════════════════════════════════════════════════════════╣
+║  Environment  : windows                                      ║
+║  🌐 One URL   : http://localhost:8765                       ║
+║                                                              ║
+║  📱 Mobile UI : http://localhost:8765/                       ║
+║  🖥️  Dashboard : http://localhost:8765/dashboard/            ║
+║  📋 API Docs  : http://localhost:8765/docs                   ║
+╚══════════════════════════════════════════════════════════════╝
+```
 
-> Ports are **auto-detected** — if `8765` or `7860` are busy, the next free port is used automatically.
+### 3. Public Share URL (Optional / Google Colab)
 
-### 3. Enable public URL (optional)
+To generate a public share link (e.g., for mobile camera access across network or in Colab):
 
 ```bash
-# Windows (PowerShell)
+# Windows PowerShell
 $env:GRADIO_SHARE="1"; python app.py
 
 # Linux / macOS
 GRADIO_SHARE=1 python app.py
 ```
 
-A `https://xxxxxxxx.gradio.live` URL will appear in the terminal.
-
-**Current live URL:** [https://3dc5af45673dd3df03.gradio.live](https://3dc5af45673dd3df03.gradio.live)
-
 ---
 
-## ☁️ Run in Google Colab
+## ⚙️ Configuration & Environment Variables
 
-Open `Inventory_System_Colab.ipynb` in Google Colab, or follow these steps manually:
-
-### Step 1 — Install dependencies
-
-```python
-!apt-get update -qq && apt-get install -y -qq libzbar0
-!pip install -r requirements.txt --quiet
-```
-
-### Step 2 — Authenticate and start
-
-```python
-from google.colab import auth
-auth.authenticate_user()
-
-from app import main
-main()
-```
-
-The app automatically detects the Colab environment:
-- **Gradio Dashboard** → public `https://....gradio.live` link
-- **Mobile UI & REST API** → accessible on port `8765`
-
----
-
-## ⚙️ Configuration
-
-| Environment Variable | Default | Description |
-|----------------------|---------|-------------|
-| `GRADIO_SERVER_PORT` | `7860` (auto) | Preferred Gradio port |
-| `MOBILE_API_PORT` | `8765` (auto) | Preferred Mobile API port |
-| `GRADIO_SHARE` | `0` local / `1` Colab | Enable public Gradio link |
-| `GOOGLE_APPLICATION_CREDENTIALS` | `credentials.json` | Path to Google service-account key |
-| `INVENTORY_SHEET_NAME` | `AI_Inventory_System` | Google Sheets document name |
-| `INVENTORY_CURRENCY` | `INR` | Default currency symbol |
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SERVER_PORT` | `8765` (auto-detects free port) | Port for single-port FastAPI + Gradio app |
+| `GRADIO_SHARE` | `0` (`1` in Colab) | Set to `1` to enable public `.gradio.live` link |
+| `GOOGLE_APPLICATION_CREDENTIALS` | `credentials.json` | Path to Google Service Account JSON |
+| `INVENTORY_SHEET_NAME` | `AI_Inventory_System` | Target Google Sheets file name |
+| `INVENTORY_CURRENCY` | `INR` | Default currency symbol (e.g., `USD`, `EUR`, `INR`) |
 
 ---
 
@@ -124,28 +101,27 @@ The app automatically detects the Colab environment:
 
 ```
 inventoryflow/
-├── app.py              # Main entrypoint — starts Gradio + Mobile API
-├── ui.py               # Gradio UI builder (all tabs)
-├── mobile_api.py       # FastAPI REST server (port 8765)
-├── mobile_ui.html      # Mobile single-page app
-├── config.py           # Paths, logger, JSON helpers
-├── products.py         # Product CRUD service
-├── inventory.py        # Count sessions & movements
-├── reports.py          # Excel report generation
-├── ocr.py              # OCR engine wrapper
-├── barcode.py          # Barcode decoder
-├── importer.py         # Excel import parser
-├── excel_export.py     # Excel export writer
-├── google_sheets.py    # Google Sheets sync
-├── forms.py            # Custom form builder
-├── utils.py            # Shared utilities
-├── requirements.txt    # Python dependencies
+├── app.py              # Main entrypoint — single-port server launcher
+├── mobile_api.py       # FastAPI REST API endpoints & route handlers
+├── mobile_ui.html      # Mobile UI SPA frontend (HTML/JS/Tailwind)
+├── ui.py               # Gradio Desktop Dashboard interface
+├── config.py           # Paths, logger, environment settings
+├── products.py         # Product Master CRUD engine
+├── inventory.py        # Stock count sessions & inventory logic
+├── movements.py        # Stock movement recording & audit logs
+├── reports.py          # Excel reports & valuation generator
+├── ocr.py              # OCR engine wrapper (EasyOCR / PaddleOCR)
+├── barcode.py          # Barcode decoding utilities (PyZBar / OpenCV)
+├── importer.py         # Excel product import engine
+├── excel_export.py     # Excel export generator
+├── google_sheets.py    # Google Sheets synchronization engine
+├── utils.py            # Shared helper functions
+├── requirements.txt    # Required Python packages
 │
-├── json/               # Live data (products, counts, movements…)
-├── exports/            # Generated Excel & JSON exports
-├── logs/               # Application log files
-├── backups/            # Auto-backup snapshots
-└── data/               # Settings & sheets state
+├── json/               # Persistent data storage (products, counts, movements)
+├── exports/            # Output Excel/JSON reports
+├── logs/               # Application runtime logs
+└── data/               # App configuration & state
 ```
 
 ---
@@ -154,98 +130,47 @@ inventoryflow/
 
 Base URL: `http://localhost:8765`
 
+### 📦 Products API
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/` | Mobile UI (HTML) |
-| `GET` | `/api` | Health check |
-| `GET` | `/docs` | Swagger UI |
-| `GET` | `/redoc` | ReDoc UI |
-| `GET` | `/api/stats` | Dashboard statistics |
-| `GET` | `/api/products` | List / search products |
-| `POST` | `/api/products` | Create product |
-| `GET` | `/api/products/{id}` | Get product |
-| `PUT` | `/api/products/{id}` | Update product |
+| `GET` | `/api/products` | Search & list products |
+| `POST` | `/api/products` | Create new product |
+| `GET` | `/api/products/{id}` | Get product details |
+| `PUT` | `/api/products/{id}` | Update product details |
 | `DELETE` | `/api/products/{id}` | Delete product |
 | `GET` | `/api/products/lookup` | Find by SKU or barcode |
-| `GET` | `/api/search` | Search products |
-| `GET` | `/api/export` | Export all products as JSON |
-| `POST` | `/api/import` | Import products from JSON |
-| `GET` | `/api/categories` | Category list with counts |
+| `GET` | `/api/categories` | List categories with product counts |
+
+### 📊 Count Sessions API
+| Method | Endpoint | Description |
+|--------|----------|-------------|
 | `GET` | `/api/counts` | List count sessions |
-| `POST` | `/api/counts` | Create count session |
-| `GET` | `/api/counts/{id}` | Get count session |
-| `POST` | `/api/counts/{id}/items` | Add counted item |
-| `PUT` | `/api/counts/{id}/items/{iid}` | Update counted item |
-| `POST` | `/api/counts/{id}/finish` | Finish session + adjust stock |
-| `GET` | `/api/movements` | Recent stock movements |
-| `GET` | `/api/activity` | Activity log |
-| `GET` | `/api/settings` | App settings |
-| `PUT` | `/api/settings` | Save settings |
-| `POST` | `/api/reset` | Reset all data |
+| `POST` | `/api/counts` | Create stock count session |
+| `GET` | `/api/counts/{id}` | Get count session & items |
+| `PATCH` | `/api/counts/{id}` | Update session info (name, inspector, location, status) |
+| `DELETE` | `/api/counts/{id}` | Permanently delete count session |
+| `POST` | `/api/counts/{id}/items` | Add counted item to session |
+| `PUT` | `/api/counts/{id}/items/{item_id}` | Update counted quantity of an item |
+| `DELETE` | `/api/counts/{id}/items/{item_id}` | Remove counted item from session |
+| `POST` | `/api/counts/{id}/finish` | Finalize count session & adjust inventory |
+
+### 📈 Reports & System API
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/stats` | System statistics & totals |
+| `GET` | `/api/movements` | Stock movement history |
+| `GET` | `/api/activity` | Activity audit logs |
+| `GET` | `/api/export` | Export full inventory as JSON |
+| `POST` | `/api/import` | Import products from JSON |
+| `GET` | `/api/settings` | Retrieve app settings |
+| `PUT` | `/api/settings` | Save app settings |
 
 ---
 
-## 🗄️ Data Storage
+## 🗄️ Storage & Logging
 
-All data is stored locally as **JSON files** in the `json/` directory — no database required.
-
-| File | Contents |
-|------|----------|
-| `json/products.json` | All product records |
-| `json/counts.json` | Stock count sessions |
-| `json/movements.json` | Stock movement history |
-| `json/activity.json` | User activity audit log |
-| `json/forms.json` | Custom form definitions |
-| `data/settings.json` | App settings |
-
-Excel exports → `exports/`  
-Logs → `logs/inventory.log`
-
----
-
-## 🔧 Troubleshooting
-
-### `Google Sheets authentication unavailable`
-Expected when no `credentials.json` is present. All local features (JSON, Excel, inventory) work normally. To enable Sheets sync, download a Google service-account key and set `GOOGLE_APPLICATION_CREDENTIALS`.
-
-### Port already in use
-Ports are auto-detected. The app scans `7860–7910` for Gradio and `8765–8800` for the Mobile API. You can override with environment variables:
-```bash
-GRADIO_SERVER_PORT=7865 MOBILE_API_PORT=8770 python app.py
-```
-
-### Camera / barcode scanner not working
-- Allow camera permission in your browser
-- Use **HTTPS** or `localhost` (camera API requires secure context)
-- On mobile, use Chrome or Safari
-
-### OCR not extracting text
-- Ensure `easyocr` or `paddleocr` is installed (`pip install easyocr`)
-- First run downloads model weights (~200 MB)
-
-### No public Gradio URL
-Set `GRADIO_SHARE=1` and restart. Make sure port `7860` is not blocked by a firewall.
-
----
-
-## 📋 Requirements
-
-Key packages from `requirements.txt`:
-
-```
-gradio>=4.44.0
-fastapi>=0.111.0
-uvicorn[standard]>=0.30.0
-pandas>=2.2.0
-openpyxl>=3.1.0
-Pillow>=10.4.0
-numpy>=1.26.0
-opencv-python-headless>=4.9.0
-pyzbar>=0.1.0
-easyocr>=1.4.0
-gspread>=5.0.0
-google-auth>=2.0.0
-```
+- **Database-Free JSON Storage:** Data is saved in human-readable JSON files inside `json/` (`products.json`, `counts.json`, `movements.json`, `activity.json`).
+- **Clean Terminal Logs:** Suppresses noisy 404 logs from browser devtools, map files, and manifest queries.
 
 ---
 
@@ -253,5 +178,4 @@ google-auth>=2.0.0
 
 Powered by **NEXORION® · SAP Gold Partner**
 
-> Built with Gradio, FastAPI, Python, and ❤️
-#
+> Built with FastAPI, Gradio, Python, and ❤️
