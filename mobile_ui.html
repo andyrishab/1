@@ -249,43 +249,106 @@
 
     <!-- ■ COUNT INFO -->
     <div class="screen" id="sc-countinfo">
-      <div class="min-h-full bg-surface-container-lowest flex flex-col p-6 gap-4">
-        <div class="border border-surface-variant rounded p-10 w-full opacity-30 h-24"></div>
-        <div class="border border-surface-variant rounded p-10 w-full opacity-20 h-32"></div>
-      </div>
-      <div class="absolute inset-0 bg-black/30 flex items-center justify-center p-6 z-10">
-        <div class="w-full max-w-sm flex flex-col rounded overflow-hidden shadow-2xl">
-          <div class="bg-primary text-on-primary py-4 flex justify-center items-center gap-2">
-            <span class="text-lg font-semibold tracking-wide">Count</span>
-            <span class="material-symbols-outlined">inventory</span>
-            <span class="text-lg font-semibold tracking-wide">Info</span>
-          </div>
-          <div class="bg-[#555555] flex-grow p-6 text-gray-200">
-            <form class="space-y-6" onsubmit="submitCountInfo();return false;">
-              <div class="flex items-end gap-4">
-                <label class="w-28 text-sm font-medium text-gray-300">Doc Num</label>
-                <input id="ci-docnum" class="flex-grow bg-transparent border-0 border-b border-gray-400 focus:border-white focus:outline-none text-white text-sm pb-1 font-mono" type="text" placeholder="SC-2026-001">
-              </div>
-              <div class="flex items-end gap-4">
-                <label class="w-28 text-sm font-medium text-gray-300">Count Date</label>
-                <input id="ci-date" class="flex-grow bg-transparent border-0 border-b border-gray-400 focus:border-white focus:outline-none text-white text-sm pb-1" type="date">
-              </div>
-              <div class="flex items-end gap-4">
-                <label class="w-28 text-sm font-medium text-gray-300">Inspector</label>
-                <input id="ci-inspector" class="flex-grow bg-transparent border-0 border-b border-gray-400 focus:border-white focus:outline-none text-white text-sm pb-1" type="text" placeholder="Your name">
-              </div>
-              <div class="flex items-end gap-4">
-                <label class="w-28 text-sm font-medium text-gray-300">Location</label>
-                <input id="ci-location" class="flex-grow bg-transparent border-0 border-b border-gray-400 focus:border-white focus:outline-none text-white text-sm pb-1" type="text" placeholder="Warehouse A">
-              </div>
-              <div class="pt-4 flex justify-center">
-                <button type="submit" class="bg-primary text-white font-bold py-2 px-10 rounded shadow active:scale-95 uppercase text-sm" id="ci-ok">OK</button>
-              </div>
-            </form>
+      <div class="min-h-full flex flex-col bg-gradient-to-br from-primary to-primary/80 pb-24">
+
+        <!-- Header banner -->
+        <div class="px-6 pt-8 pb-6 text-on-primary flex flex-col gap-1">
+          <div class="flex items-center gap-3">
+            <span class="material-symbols-outlined text-4xl text-on-primary/80">inventory</span>
+            <div>
+              <h1 class="text-2xl font-bold tracking-tight">Stock Count</h1>
+              <p class="text-on-primary/70 text-sm">Fill in session info to start counting</p>
+            </div>
           </div>
         </div>
+
+        <!-- Form card -->
+        <div class="flex-grow mx-4 rounded-2xl bg-white shadow-2xl overflow-hidden">
+          <form class="flex flex-col gap-0" onsubmit="submitCountInfo();return false;">
+
+            <!-- Doc Number -->
+            <div class="flex items-center gap-3 px-5 py-4 border-b border-gray-100">
+              <span class="material-symbols-outlined text-primary text-xl w-6 flex-shrink-0">tag</span>
+              <div class="flex-grow">
+                <label class="text-[10px] font-bold uppercase tracking-widest text-gray-400">Document No.</label>
+                <input id="ci-docnum"
+                  class="w-full text-gray-800 font-mono font-semibold text-sm mt-0.5 bg-transparent outline-none placeholder:text-gray-300"
+                  type="text" placeholder="Auto-generated">
+              </div>
+              <button type="button" onclick="genDocNum()"
+                class="text-[10px] bg-primary/10 text-primary font-bold px-2 py-1 rounded-lg active:scale-95">
+                AUTO
+              </button>
+            </div>
+
+            <!-- Count Date -->
+            <div class="flex items-center gap-3 px-5 py-4 border-b border-gray-100">
+              <span class="material-symbols-outlined text-primary text-xl w-6 flex-shrink-0">calendar_month</span>
+              <div class="flex-grow">
+                <label class="text-[10px] font-bold uppercase tracking-widest text-gray-400">Count Date</label>
+                <input id="ci-date"
+                  class="w-full text-gray-800 text-sm mt-0.5 bg-transparent outline-none"
+                  type="date">
+              </div>
+            </div>
+
+            <!-- Inspector -->
+            <div class="flex items-center gap-3 px-5 py-4 border-b border-gray-100">
+              <span class="material-symbols-outlined text-primary text-xl w-6 flex-shrink-0">person</span>
+              <div class="flex-grow">
+                <label class="text-[10px] font-bold uppercase tracking-widest text-gray-400">Inspector Name <span class="text-error">*</span></label>
+                <input id="ci-inspector"
+                  class="w-full text-gray-800 text-sm mt-0.5 bg-transparent outline-none placeholder:text-gray-300"
+                  type="text" placeholder="Your name" autocomplete="name" required>
+              </div>
+            </div>
+
+            <!-- Location -->
+            <div class="flex items-center gap-3 px-5 py-4 border-b border-gray-100">
+              <span class="material-symbols-outlined text-primary text-xl w-6 flex-shrink-0">location_on</span>
+              <div class="flex-grow">
+                <label class="text-[10px] font-bold uppercase tracking-widest text-gray-400">Location</label>
+                <input id="ci-location" list="location-suggestions"
+                  class="w-full text-gray-800 text-sm mt-0.5 bg-transparent outline-none placeholder:text-gray-300"
+                  type="text" placeholder="Warehouse A / Shelf 1">
+                <datalist id="location-suggestions">
+                  <option value="Warehouse A">
+                  <option value="Warehouse B">
+                  <option value="Store Room">
+                  <option value="Shelf 1">
+                  <option value="Shelf 2">
+                  <option value="Cold Storage">
+                  <option value="Main Floor">
+                </datalist>
+              </div>
+            </div>
+
+            <!-- Notes -->
+            <div class="flex items-start gap-3 px-5 py-4 border-b border-gray-100">
+              <span class="material-symbols-outlined text-primary text-xl w-6 flex-shrink-0 mt-1">notes</span>
+              <div class="flex-grow">
+                <label class="text-[10px] font-bold uppercase tracking-widest text-gray-400">Notes (optional)</label>
+                <textarea id="ci-notes" rows="2"
+                  class="w-full text-gray-800 text-sm mt-0.5 bg-transparent outline-none resize-none placeholder:text-gray-300"
+                  placeholder="Any remarks for this count session…"></textarea>
+              </div>
+            </div>
+
+            <!-- Submit -->
+            <div class="px-5 py-5">
+              <button type="submit" id="ci-ok"
+                class="w-full bg-primary text-on-primary font-bold py-3.5 rounded-xl shadow-md active:scale-95 transition-transform flex items-center justify-center gap-2 text-base">
+                <span class="material-symbols-outlined">play_arrow</span>
+                Start Counting
+              </button>
+            </div>
+
+          </form>
+        </div>
+
       </div>
     </div>
+
 
     <!-- ■ STOCK COUNTING -->
     <div class="screen pb-32" id="sc-counting">
@@ -817,6 +880,14 @@ async function api(path, opts={}) {
 // ON SCREEN ENTER
 // ═══════════════════════════════════════════════════
 function onEnter(id) {
+  // Pre-fill Count Info form every time it is opened
+  if (id === 'sc-countinfo') {
+    const today = new Date().toISOString().slice(0,10);
+    const dateEl = document.getElementById('ci-date');
+    if (dateEl && !dateEl.value) dateEl.value = today;
+    const docEl = document.getElementById('ci-docnum');
+    if (docEl && !docEl.value) genDocNum();
+  }
   if(id==='sc-dashboard') loadDashboard();
   if(id==='sc-products')  loadProducts();
   if(id==='sc-categories')loadCategories();
@@ -1166,36 +1237,47 @@ async function loadCategories() {
 // ═══════════════════════════════════════════════════
 // COUNT INFO → create session
 // ═══════════════════════════════════════════════════
+// Auto-generate a document number like SC-20260814-001
+function genDocNum() {
+  const now = new Date();
+  const d = now.toISOString().slice(0,10).replace(/-/g,'');
+  const rand = String(Math.floor(Math.random()*900)+100);
+  document.getElementById('ci-docnum').value = `SC-${d}-${rand}`;
+}
+
 async function submitCountInfo() {
-  const docnum=document.getElementById('ci-docnum').value.trim();
-  const inspector=document.getElementById('ci-inspector').value.trim();
-  const date=document.getElementById('ci-date').value;
-  const location=document.getElementById('ci-location').value.trim();
-  if(!inspector){showToast('Please enter inspector name');return;}
-  const btn=document.getElementById('ci-ok');
-  btn.textContent='Creating…'; btn.disabled=true;
-  const body={name:docnum||'Count-'+date,doc_num:docnum,inspector,count_date:date,location};
-  const session=await api('/counts',{method:'POST',body:JSON.stringify(body)});
-  btn.textContent='OK'; btn.disabled=false;
-  
-  const labelDoc = docnum || (session ? 'PI'+session.id : 'PI20260730003');
+  const docnum    = document.getElementById('ci-docnum').value.trim();
+  const inspector = document.getElementById('ci-inspector').value.trim();
+  const date      = document.getElementById('ci-date').value;
+  const location  = document.getElementById('ci-location').value.trim();
+  const notes     = document.getElementById('ci-notes')?.value.trim() || '';
+  if (!inspector) { showToast('⚠️ Please enter inspector name'); return; }
+  const btn = document.getElementById('ci-ok');
+  btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-base">progress_activity</span> Creating…';
+  btn.disabled = true;
+  const body = { name: docnum||('Count-'+date), doc_num: docnum, inspector, count_date: date, location, notes };
+  const session = await api('/counts', { method:'POST', body:JSON.stringify(body) });
+  btn.innerHTML = '<span class="material-symbols-outlined">play_arrow</span> Start Counting';
+  btn.disabled = false;
+
+  const labelDoc = docnum || (session ? 'SC'+session.id : 'SC001');
   document.getElementById('cnt-doc-label').textContent = '#' + labelDoc;
   document.getElementById('cnt-inspector-label').textContent = 'Inspector: ' + inspector;
 
-  if(session){
-    sessionId=session.id;
-    queue=[];qIdx=-1;
+  if (session) {
+    sessionId = session.id;
+    queue = []; qIdx = -1;
     renderQueue();
     syncCard();
-    showToast('Session created! ID: '+session.id);
-    go('sc-counting','Start Counting',true);
+    showToast('✅ Session #' + session.id + ' started!');
+    go('sc-counting', 'Start Counting', true);
     setTimeout(startEmbeddedCamera, 300);
   } else {
     showToast('⚠️ Could not create session — API offline?');
-    sessionId=null;
-    queue=[];qIdx=-1;
-    renderQueue();syncCard();
-    go('sc-counting','Start Counting',true);
+    sessionId = null;
+    queue = []; qIdx = -1;
+    renderQueue(); syncCard();
+    go('sc-counting', 'Start Counting', true);
     setTimeout(startEmbeddedCamera, 300);
   }
 }
